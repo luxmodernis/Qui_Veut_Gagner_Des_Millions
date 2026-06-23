@@ -43,33 +43,67 @@ export default function TvPage() {
 
   if (phase === "lobby") {
     return (
-      <div style={styles.root}>
-        <div style={styles.logoArea}>
-          <h1 style={styles.logo}>Qui Veut Gagner Des Millions ?</h1>
-          <p style={{ color: "#aaa", fontSize: 22 }}>En attente des équipes…</p>
-        </div>
-        {teams.length > 0 && (
-          <div style={styles.teamGrid}>
-            {teams.map((t) => (
-              <div key={t.id} style={styles.teamChip}>{t.name}</div>
-            ))}
+      <div style={{ ...styles.root, background: "radial-gradient(ellipse at center, #0d1b4b 0%, #020510 70%)" }}>
+        {/* Cercles décoratifs */}
+        <div style={styles.ring1} />
+        <div style={styles.ring2} />
+        <div style={styles.ring3} />
+
+        <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
+          {/* Logo */}
+          <div style={styles.logoWrap}>
+            <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+              <circle cx="60" cy="60" r="58" stroke="#f5c518" strokeWidth="4" />
+              <circle cx="60" cy="60" r="44" stroke="#f5c518" strokeWidth="1.5" strokeDasharray="6 4" />
+              <text x="60" y="52" textAnchor="middle" fill="#f5c518" fontSize="13" fontWeight="700" fontFamily="system-ui">QUI VEUT</text>
+              <text x="60" y="68" textAnchor="middle" fill="#ffffff" fontSize="11" fontFamily="system-ui">GAGNER DES</text>
+              <text x="60" y="83" textAnchor="middle" fill="#f5c518" fontSize="13" fontWeight="700" fontFamily="system-ui">MILLIONS ?</text>
+            </svg>
           </div>
-        )}
+
+          <h1 style={styles.logo}>Qui Veut Gagner Des Millions ?</h1>
+          <p style={{ color: "#7a8fcc", fontSize: 20, marginBottom: 48, letterSpacing: 2, textTransform: "uppercase" }}>
+            {teams.length === 0 ? "En attente des équipes…" : `${teams.length} équipe${teams.length > 1 ? "s" : ""} connectée${teams.length > 1 ? "s" : ""}`}
+          </p>
+
+          {teams.length > 0 && (
+            <div style={styles.teamGrid}>
+              {teams.map((t) => (
+                <div key={t.id} style={styles.teamChip}>
+                  <span style={styles.teamDot} />
+                  {t.name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
   if (phase === "scores") {
+    const medals = ["🥇", "🥈", "🥉"];
     return (
-      <div style={styles.root}>
-        <h2 style={{ color: "#f5c518", fontSize: 42, marginBottom: 40 }}>Scores finaux</h2>
-        <div style={{ width: "100%", maxWidth: 700 }}>
-          {teams.map((t, i) => (
-            <div key={t.id} style={styles.scoreRow}>
-              <span style={{ color: "#f5c518", fontSize: 28, minWidth: 40 }}>#{i + 1}</span>
-              <span style={{ color: "#fff", fontSize: 28, flex: 1 }}>{t.name}</span>
-            </div>
-          ))}
+      <div style={{ ...styles.root, background: "radial-gradient(ellipse at center, #0d1b4b 0%, #020510 70%)" }}>
+        <div style={styles.ring1} />
+        <div style={styles.ring2} />
+        <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 760, display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <h2 style={{ color: "#f5c518", fontSize: 48, marginBottom: 8, fontWeight: 900, textTransform: "uppercase", letterSpacing: 3 }}>Classement final</h2>
+          <p style={{ color: "#7a8fcc", fontSize: 18, marginBottom: 48, letterSpacing: 2 }}>Félicitations à toutes les équipes !</p>
+          <div style={{ width: "100%" }}>
+            {teams.map((t, i) => (
+              <div key={t.id} style={{
+                ...styles.scoreRow,
+                background: i === 0 ? "linear-gradient(90deg, #2a1f00, #1a1a2e)" : "#111827",
+                border: i === 0 ? "2px solid #f5c518" : "2px solid #1e293b",
+                transform: i === 0 ? "scale(1.03)" : "scale(1)",
+                marginBottom: i === 0 ? 20 : 10,
+              }}>
+                <span style={{ fontSize: 32, minWidth: 50 }}>{medals[i] ?? `#${i + 1}`}</span>
+                <span style={{ color: i === 0 ? "#f5c518" : "#fff", fontSize: i === 0 ? 30 : 24, fontWeight: i === 0 ? 800 : 500, flex: 1 }}>{t.name}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -150,15 +184,54 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "center",
     padding: "40px 48px",
     fontFamily: "system-ui, sans-serif",
+    overflow: "hidden",
+    position: "relative",
   },
-  logoArea: { textAlign: "center", marginBottom: 48 },
+  ring1: {
+    position: "absolute",
+    width: 700,
+    height: 700,
+    borderRadius: "50%",
+    border: "1px solid rgba(245,197,24,0.08)",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%,-50%)",
+    pointerEvents: "none",
+  },
+  ring2: {
+    position: "absolute",
+    width: 1000,
+    height: 1000,
+    borderRadius: "50%",
+    border: "1px solid rgba(245,197,24,0.05)",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%,-50%)",
+    pointerEvents: "none",
+  },
+  ring3: {
+    position: "absolute",
+    width: 1300,
+    height: 1300,
+    borderRadius: "50%",
+    border: "1px solid rgba(245,197,24,0.03)",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%,-50%)",
+    pointerEvents: "none",
+  },
+  logoWrap: {
+    marginBottom: 32,
+    filter: "drop-shadow(0 0 30px rgba(245,197,24,0.4))",
+  },
   logo: {
     color: "#f5c518",
     fontSize: 52,
     fontWeight: 900,
     textTransform: "uppercase",
-    letterSpacing: 2,
-    marginBottom: 16,
+    letterSpacing: 4,
+    marginBottom: 12,
+    textShadow: "0 0 40px rgba(245,197,24,0.5)",
   },
   teamGrid: {
     display: "flex",
@@ -168,12 +241,23 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 1000,
   },
   teamChip: {
-    background: "#1a1a2e",
-    border: "2px solid #333",
+    background: "rgba(245,197,24,0.08)",
+    border: "1px solid rgba(245,197,24,0.3)",
     borderRadius: 12,
-    padding: "12px 24px",
+    padding: "12px 28px",
     color: "#fff",
     fontSize: 22,
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  },
+  teamDot: {
+    width: 8,
+    height: 8,
+    borderRadius: "50%",
+    background: "#4caf50",
+    display: "inline-block",
+    boxShadow: "0 0 6px #4caf50",
   },
   questionBadge: {
     color: "#aaa",

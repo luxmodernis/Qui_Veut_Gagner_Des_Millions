@@ -32,14 +32,32 @@ export async function setQuestions(questions: Question[]): Promise<void> {
 
 const DEFAULT_QUESTIONS: Question[] = [
   {
-    question: "Quelle est la capitale de la France ?",
-    choices: ["Lyon", "Marseille", "Paris", "Bordeaux"],
+    question: "En quelle année a été créée la marque Erborian ?",
+    choices: ["1999", "2005", "2007", "2012"],
     correctIndex: 2,
-    note: "Paris est la capitale depuis le XIIe siècle.",
+    note: "Erborian a été fondée en 2007 à Séoul, fruit d'une rencontre entre savoir-faire coréen et expertise française.",
   },
   {
-    question: "Combien de côtés a un hexagone ?",
-    choices: ["4", "5", "6", "8"],
+    question: "Quelle plante emblématique est au cœur de la gamme Ginseng de Erborian ?",
+    choices: ["Aloe vera", "Bambou", "Ginseng rouge", "Camelia"],
     correctIndex: 2,
+    note: "Le ginseng rouge de Corée est utilisé depuis des siècles en médecine traditionnelle asiatique pour ses propriétés revitalisantes et anti-âge.",
+  },
+  {
+    question: "Le BB Crème d'Erborian est inspiré d'un concept beauté originel. De quel pays vient-il ?",
+    choices: ["Japon", "France", "Chine", "Corée du Sud"],
+    correctIndex: 3,
+    note: "Le BB Crème (Blemish Balm) est un incontournable de la routine beauté coréenne, utilisé à l'origine par les dermatologues pour protéger la peau après les interventions.",
+  },
+  {
+    question: "Quelle est la signification du mot « Erborian » ?",
+    choices: [
+      "Herboriste en latin",
+      "Contraction de « herbe » et « Corée »",
+      "Nom d'une fleur coréenne",
+      "Mot coréen pour « peau parfaite »",
+    ],
+    correctIndex: 1,
+    note: "Erborian vient de la contraction des mots « herbe » et « Corée » — une promesse de nature et d'efficacité inspirée de la tradition coréenne.",
   },
 ];
