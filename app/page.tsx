@@ -1,66 +1,28 @@
-import Image from "next/image";
-import styles from "./page.module.css";
-
 export default function Home() {
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div style={{ minHeight: "100vh", background: "#0d0d1a", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "system-ui, sans-serif" }}>
+      <div style={{ textAlign: "center" }}>
+        <h1 style={{ color: "#f5c518", fontSize: 36, marginBottom: 32 }}>Qui Veut Gagner Des Millions ?</h1>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 240, margin: "0 auto" }}>
+          <a href="/play" style={linkStyle("#f5c518", "#000")}>Équipe → /play</a>
+          <a href="/tv" style={linkStyle("#1565c0", "#fff")}>TV → /tv</a>
+          <a href="/control" style={linkStyle("#7e57c2", "#fff")}>Animateur → /control</a>
+          <a href="/admin" style={linkStyle("#e53935", "#fff")}>Admin → /admin</a>
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
     </div>
   );
+}
+
+function linkStyle(bg: string, color: string): React.CSSProperties {
+  return {
+    display: "block",
+    padding: "14px 24px",
+    borderRadius: 10,
+    background: bg,
+    color,
+    fontWeight: 700,
+    fontSize: 16,
+    textDecoration: "none",
+  };
 }
