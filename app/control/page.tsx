@@ -84,7 +84,7 @@ export default function ControlPage() {
           Question {questionIndex + 1}/{totalQuestions}
         </span>
         <span style={{ color: "#aaa" }}>
-          Phase : <strong style={{ color: "#fff" }}>{phase}</strong>
+          Phase : <strong style={{ color: "#fff" }}>{{ lobby: "Salle d'attente", question: "Question", reveal: "Révélation", debrief: "Débrief", scores: "Scores" }[phase]}</strong>
         </span>
         <span style={{ color: "#aaa", fontSize: 14 }}>
           {teams.filter(t => now - t.lastSeen < 5000).length}/{teams.length} actives

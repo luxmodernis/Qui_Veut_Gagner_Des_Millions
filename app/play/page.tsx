@@ -240,12 +240,12 @@ export default function PlayPage() {
     );
   }
 
-  if (phase === "debrief" && currentQuestion?.note) {
+  // debrief : on reste sur l'écran reveal, la TV gère le débrief
+  if (phase === "debrief") {
     return (
       <div style={styles.center}>
         <div style={styles.card}>
-          <h3 style={{ color: "#f5c518", marginBottom: 12 }}>Le saviez-vous ?</h3>
-          <p style={{ color: "#ddd", lineHeight: 1.6 }}>{currentQuestion.note}</p>
+          <p style={{ color: "#aaa", fontSize: 14 }}>Regardez l'écran principal !</p>
         </div>
       </div>
     );
