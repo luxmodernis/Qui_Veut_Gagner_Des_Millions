@@ -61,6 +61,16 @@ export default function PlayPage() {
         setSelected(null);
         setLocked(false);
       }
+      // detect admin reset: back to lobby and our team no longer exists
+      if (data.phase === "lobby") {
+        const currentId = localStorage.getItem("quiz_team_id");
+        const stillExists = data.teams.some((t) => t.id === currentId);
+        if (!stillExists && currentId) {
+          localStorage.removeItem("quiz_team_id");
+          localStorage.removeItem("quiz_team_name");
+          setName(null);
+        }
+      }
     } catch {}
   }, []);
 

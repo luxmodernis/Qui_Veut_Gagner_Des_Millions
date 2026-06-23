@@ -28,6 +28,7 @@ export async function GET() {
       id,
       name: t.name,
       lastSeen: t.lastSeen,
+      answers: t.answers,
     })),
     currentQuestion,
   });
