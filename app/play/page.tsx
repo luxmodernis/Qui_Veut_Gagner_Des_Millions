@@ -38,38 +38,59 @@ async function post(action: string, extra = {}) {
 }
 
 export default function PlayPage() {
-  const [teamId] = useState(() =>
+  const teamIdRef = useRef<string>(
     typeof window !== "undefined" ? getOrCreateTeamId() : ""
   );
-  const [name, setName] = useState<string | null>(() =>
+  const [teamId] = useState(() => teamIdRef.current);
+  const nameRef = useRef<string | null>(
     typeof window !== "undefined" ? localStorage.getItem("quiz_team_name") : null
   );
+  const [name, setNameState] = useState<string | null>(nameRef.current);
   const [nameInput, setNameInput] = useState("");
   const [state, setState] = useState<ApiState | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [locked, setLocked] = useState(false);
   const lastQuestionIndex = useRef<number>(-1);
+  const pingCounterRef = useRef(0);
+
+  function setName(n: string | null) {
+    nameRef.current = n;
+    setNameState(n);
+  }
 
   const poll = useCallback(async () => {
     try {
       const res = await fetch("/api/state");
       const data: ApiState = await res.json();
       setState(data);
-      // reset selection on new question
+
       if (data.questionIndex !== lastQuestionIndex.current) {
         lastQuestionIndex.current = data.questionIndex;
         setSelected(null);
         setLocked(false);
       }
-      // detect admin reset: back to lobby and our team no longer exists
-      if (data.phase === "lobby") {
-        const currentId = localStorage.getItem("quiz_team_id");
-        const stillExists = data.teams.some((t) => t.id === currentId);
-        if (!stillExists && currentId) {
-          localStorage.removeItem("quiz_team_id");
-          localStorage.removeItem("quiz_team_name");
-          setName(null);
-        }
+
+      const currentName = nameRef.current;
+      const currentId = teamIdRef.current;
+
+      if (!currentName) return;
+
+      // detect reset: lobby + our team is gone → clear everything immediately
+      const stillExists = data.teams.some((t) => t.id === currentId);
+      if (!stillExists) {
+        localStorage.removeItem("quiz_team_id");
+        localStorage.removeItem("quiz_team_name");
+        teamIdRef.current = Math.random().toString(36).slice(2, 10);
+        localStorage.setItem("quiz_team_id", teamIdRef.current);
+        setName(null);
+        return;
+      }
+
+      // ping join every ~10 polls (15s) to keep lastSeen alive
+      pingCounterRef.current += 1;
+      if (pingCounterRef.current >= 10) {
+        pingCounterRef.current = 0;
+        post("join", { teamId: currentId, name: currentName });
       }
     } catch {}
   }, []);
@@ -80,19 +101,13 @@ export default function PlayPage() {
     return () => clearInterval(id);
   }, [poll]);
 
-  // keep lastSeen alive
-  useEffect(() => {
-    if (!name) return;
-    const ping = () => post("join", { teamId, name });
-    ping();
-    const id = setInterval(ping, 10000);
-    return () => clearInterval(id);
-  }, [name, teamId]);
-
   async function handleJoin() {
     if (!nameInput.trim()) return;
-    await post("join", { teamId, name: nameInput.trim() });
+    const currentId = teamIdRef.current;
+    localStorage.setItem("quiz_team_id", currentId);
+    await post("join", { teamId: currentId, name: nameInput.trim() });
     localStorage.setItem("quiz_team_name", nameInput.trim());
+    pingCounterRef.current = 0;
     setName(nameInput.trim());
   }
 
