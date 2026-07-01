@@ -101,7 +101,9 @@ async function handlePost(req: NextRequest) {
       state.timerStartedAt = state.timerEnabled ? Date.now() : null;
     } else if (action === "host-reveal") {
       if (state.phase !== "question") return err("wrong phase");
-      if (state.timerEnabled && state.timerStartedAt) {
+      const teamsList = Object.values(state.teams);
+      const allAnswered = teamsList.length > 0 && teamsList.every((t) => t.answers[String(state.questionIndex)] !== undefined);
+      if (state.timerEnabled && state.timerStartedAt && !allAnswered) {
         const elapsed = (Date.now() - state.timerStartedAt) / 1000;
         if (elapsed < state.timerDuration) return err("Le chrono n'est pas encore écoulé");
       }

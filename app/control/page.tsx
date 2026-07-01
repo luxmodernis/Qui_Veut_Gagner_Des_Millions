@@ -101,6 +101,8 @@ export default function ControlPage() {
   const now = Date.now();
   const answeredCount = teams.filter(t => t.answers[String(questionIndex)] !== undefined).length;
   const timeIsUp = !timerEnabled || (timerStartedAt !== null && (now - timerStartedAt) / 1000 >= timerDuration);
+  const allAnswered = teams.length > 0 && answeredCount === teams.length;
+  const canReveal = timeIsUp || allAnswered;
 
   return (
     <div style={styles.page}>
@@ -202,7 +204,8 @@ export default function ControlPage() {
                 <span style={{ color: "#fff", flex: 1, fontSize: 15 }}>{t.name}</span>
                 {hasAnswered ? (
                   <span style={{
-                    padding: "3px 10px", borderRadius: 6, fontSize: 13, fontWeight: 700,
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    minWidth: 32, height: 26, padding: "0 8px", borderRadius: 6, fontSize: 13, fontWeight: 700, boxSizing: "border-box",
                     background: phase === "question"
                       ? "#333"
                       : isCorrect ? "#1b3a1b" : "#3a1b1b",
@@ -226,8 +229,8 @@ export default function ControlPage() {
                   </button>
                 ) : (
                   <span style={{
-                    display: "inline-block", width: 24, height: 24, borderRadius: 5,
-                    border: "1px solid #333", background: "#1a1a2a",
+                    display: "inline-block", minWidth: 32, height: 26, borderRadius: 6,
+                    border: "1px solid #333", background: "#1a1a2a", boxSizing: "border-box",
                   }} />
                 )}
                 {isCorrect && phase !== "question" && (
@@ -263,6 +266,7 @@ export default function ControlPage() {
       )}
 
       {/* Actions */}
+      {phase !== "scores" && (
       <div style={styles.actions}>
         {phase === "lobby" && (
           <Btn onClick={async () => { const r = await post("host-start"); if (!r.ok) alert(r.error); }} color="#f5c518" label="▶ Démarrer" />
@@ -271,8 +275,8 @@ export default function ControlPage() {
           <Btn
             onClick={() => post("host-reveal")}
             color="#f5c518"
-            label={timerEnabled && !timeIsUp ? "Révéler la réponse (attendre la fin du chrono)" : "Révéler la réponse"}
-            disabled={timerEnabled && !timeIsUp}
+            label={canReveal ? "Révéler la réponse" : "Révéler la réponse (attendre la fin du chrono)"}
+            disabled={!canReveal}
           />
         )}
         {phase === "reveal" && currentQuestion?.note && <Btn onClick={() => post("host-debrief")} color="#7e57c2" label="Afficher le débrief" />}
@@ -281,6 +285,7 @@ export default function ControlPage() {
             label={questionIndex + 1 >= totalQuestions ? "Voir les scores" : "Question suivante →"} />
         )}
       </div>
+      )}
 
       {/* Arrêt anticipé */}
       {phase === "question" && (
