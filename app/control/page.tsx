@@ -197,7 +197,9 @@ export default function ControlPage() {
 
       {/* Actions */}
       <div style={styles.actions}>
-        {phase === "lobby" && <Btn onClick={() => post("host-start")} color="#f5c518" label="▶ Démarrer" />}
+        {phase === "lobby" && (
+          <Btn onClick={async () => { const r = await post("host-start"); if (!r.ok) alert(r.error); }} color="#f5c518" label="▶ Démarrer" />
+        )}
         {phase === "question" && <Btn onClick={() => post("host-reveal")} color="#f5c518" label="Révéler la réponse" />}
         {phase === "reveal" && currentQuestion?.note && <Btn onClick={() => post("host-debrief")} color="#7e57c2" label="Afficher le débrief" />}
         {(phase === "reveal" || phase === "debrief") && (

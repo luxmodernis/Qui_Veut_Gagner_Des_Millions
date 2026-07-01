@@ -94,6 +94,7 @@ export default function AdminPage() {
   const [authError, setAuthError] = useState("");
   const [state, setState] = useState<ApiState | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [savedSnapshot, setSavedSnapshot] = useState<string>("[]");
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [gotoIndex, setGotoIndex] = useState("");
@@ -173,9 +174,11 @@ export default function AdminPage() {
     if (!authed) return;
     fetch("/api/questions")
       .then((r) => r.json())
-      .then((q: Question[]) => setQuestions(q))
+      .then((q: Question[]) => { setQuestions(q); setSavedSnapshot(JSON.stringify(q)); })
       .catch(() => {});
   }, [authed]);
+
+  const isDirty = JSON.stringify(questions) !== savedSnapshot;
 
   async function handleAuth() {
     const res = await post("auth-admin", { code });
@@ -193,8 +196,11 @@ export default function AdminPage() {
       }
     }
     const res = await post("admin-save-questions", { questions });
-    if (res.ok) { setSaved(true); setTimeout(() => setSaved(false), 3000); }
-    else setSaveError(res.error ?? "Erreur serveur");
+    if (res.ok) {
+      setSavedSnapshot(JSON.stringify(questions));
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } else setSaveError(res.error ?? "Erreur serveur");
   }
 
   async function handleGenerate() {
@@ -273,6 +279,18 @@ export default function AdminPage() {
     <div style={styles.page}>
       <h1 style={{ color: "#ef5350", marginBottom: 20, fontSize: 22 }}>Supervision technique</h1>
 
+      {isDirty && (
+        <div style={{
+          background: "#3a2f00", border: "1px solid #f5c518", borderRadius: 10,
+          padding: "12px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 10,
+        }}>
+          <span style={{ fontSize: 18 }}>⚠️</span>
+          <p style={{ color: "#f5c518", fontSize: 13, fontWeight: 600, margin: 0 }}>
+            Modifications des questions non enregistrées — les autres écrans utilisent encore les anciennes questions tant que vous n'avez pas cliqué sur « Enregistrer les questions ».
+          </p>
+        </div>
+      )}
+
       {/* État */}
       <Section title="État actuel">
         <p style={{ color: "#fff" }}>
@@ -337,7 +355,7 @@ export default function AdminPage() {
       <Section title="Navigation manuelle">
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
           {PHASES.map((p) => (
-            <button key={p} onClick={() => post("admin-set-phase", { phase: p })}
+            <button key={p} onClick={async () => { const r = await post("admin-set-phase", { phase: p }); if (!r.ok) alert(r.error); }}
               style={{ ...styles.btn, background: p === phase ? "#ef5350" : "#2a2a3e", color: "#fff", padding: "8px 14px", fontSize: 13 }}>
               {PHASE_LABELS[p]}
             </button>
@@ -348,7 +366,7 @@ export default function AdminPage() {
             type="number" min={1} max={totalQuestions} placeholder="N°"
             value={gotoIndex} onChange={(e) => setGotoIndex(e.target.value)} />
           <button style={{ ...styles.btn, background: "#42a5f5", color: "#000" }}
-            onClick={() => post("admin-goto", { questionIndex: parseInt(gotoIndex) - 1 })}>
+            onClick={async () => { const r = await post("admin-goto", { questionIndex: parseInt(gotoIndex) - 1 }); if (!r.ok) alert(r.error); }}>
             Aller à cette question
           </button>
         </div>

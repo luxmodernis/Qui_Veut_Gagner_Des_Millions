@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
     const questions = await getQuestions();
 
     if (action === "host-start") {
+      if (questions.length === 0) return err("Aucune question enregistrée — ajoutez et enregistrez des questions dans l'admin avant de démarrer");
       state.phase = "question";
       state.questionIndex = 0;
       state.timerStartedAt = state.timerEnabled ? Date.now() : null;
@@ -110,9 +111,12 @@ export async function POST(req: NextRequest) {
   if (adminActions.includes(action)) {
     if (!authorized(req, getCodeB())) return err("unauthorized", 401);
     const state = await getState();
+    const questions = await getQuestions();
 
     if (action === "admin-goto") {
       const { questionIndex } = body as { questionIndex: number };
+      if (questions.length === 0) return err("Aucune question enregistrée");
+      if (questionIndex < 0 || questionIndex >= questions.length) return err("Numéro de question invalide");
       state.questionIndex = questionIndex;
       state.phase = "question";
       state.timerStartedAt = state.timerEnabled ? Date.now() : null;
@@ -126,6 +130,7 @@ export async function POST(req: NextRequest) {
       state.teams = {};
     } else if (action === "admin-set-phase") {
       const { phase } = body as { phase: Phase };
+      if (phase === "question" && questions.length === 0) return err("Aucune question enregistrée");
       state.phase = phase;
       if (phase === "question" && state.timerEnabled) {
         state.timerStartedAt = Date.now();
