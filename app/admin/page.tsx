@@ -192,29 +192,37 @@ export default function AdminPage() {
     else setAuthError("Code incorrect");
   }
 
-  async function handleSave() {
+  async function saveQuestions(list: Question[]) {
     setSaveError("");
     try {
-      for (let i = 0; i < questions.length; i++) {
-        const q = questions[i];
-        if (!q.question?.trim()) { setSaveError(`Question ${i + 1} : texte manquant`); return; }
+      for (let i = 0; i < list.length; i++) {
+        const q = list[i];
+        if (!q.question?.trim()) { setSaveError(`Question ${i + 1} : texte manquant`); return false; }
         if (!Array.isArray(q.choices) || q.choices.length !== 4) {
           setSaveError(`Question ${i + 1} : il faut exactement 4 propositions (trouvé ${q.choices?.length ?? 0})`);
-          return;
+          return false;
         }
         for (let j = 0; j < 4; j++) {
-          if (!q.choices[j]?.trim()) { setSaveError(`Question ${i + 1} : proposition ${LETTERS[j]} manquante`); return; }
+          if (!q.choices[j]?.trim()) { setSaveError(`Question ${i + 1} : proposition ${LETTERS[j]} manquante`); return false; }
         }
       }
-      const res = await post("admin-save-questions", { questions });
+      const res = await post("admin-save-questions", { questions: list });
       if (res.ok) {
-        setSavedSnapshot(JSON.stringify(questions));
+        setSavedSnapshot(JSON.stringify(list));
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
-      } else setSaveError(res.error ?? "Erreur serveur");
+        return true;
+      }
+      setSaveError(res.error ?? "Erreur serveur");
+      return false;
     } catch (e) {
       setSaveError(`Erreur inattendue : ${e instanceof Error ? e.message : String(e)}`);
+      return false;
     }
+  }
+
+  async function handleSave() {
+    await saveQuestions(questions);
   }
 
   async function handleGenerate() {
@@ -533,10 +541,14 @@ export default function AdminPage() {
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
-                onClick={() => { setQuestions((prev) => [...prev, ...genPreview]); setGenPreview([]); }}
+                onClick={async () => {
+                  const next = [...questions, ...genPreview];
+                  const ok = await saveQuestions(next);
+                  if (ok) { setQuestions(next); setGenPreview([]); }
+                }}
                 style={{ ...styles.btn, background: "#4caf50", color: "#000" }}
               >
-                + Ajouter au quiz ({genPreview.length} question{genPreview.length > 1 ? "s" : ""})
+                + Ajouter au quiz et enregistrer ({genPreview.length} question{genPreview.length > 1 ? "s" : ""})
               </button>
               <button
                 onClick={() => setGenPreview([])}
@@ -604,9 +616,10 @@ export default function AdminPage() {
             + Ajouter une question
           </button>
           <button
-            onClick={() => {
-              if (questions.length > 0 && !confirm("Remplacer les questions actuelles par 3 questions de test ?")) return;
-              setQuestions(TEST_QUESTIONS);
+            onClick={async () => {
+              if (questions.length > 0 && !confirm("Remplacer les questions actuelles par 3 questions de test ? Ce sera enregistré immédiatement.")) return;
+              const ok = await saveQuestions(TEST_QUESTIONS);
+              if (ok) setQuestions(TEST_QUESTIONS);
             }}
             style={{ ...styles.btn, background: "#37474f", color: "#90a4ae" }}
           >
@@ -616,10 +629,11 @@ export default function AdminPage() {
             Enregistrer les questions
           </button>
           <button
-            onClick={() => {
+            onClick={async () => {
               if (questions.length === 0) return;
-              if (!confirm(`Supprimer les ${questions.length} question(s) ? Cliquez ensuite sur « Enregistrer les questions » pour valider.`)) return;
-              setQuestions([]);
+              if (!confirm(`Supprimer les ${questions.length} question(s) ? Ce sera enregistré immédiatement.`)) return;
+              const ok = await saveQuestions([]);
+              if (ok) setQuestions([]);
             }}
             style={{ ...styles.btn, background: "#3a1a1a", color: "#e53935" }}
           >
