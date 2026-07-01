@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Timer from "@/app/components/Timer";
+import { calcAnswerScore, normalizeAnswer } from "@/lib/score";
 
 type Phase = "lobby" | "question" | "reveal" | "debrief" | "scores";
 
@@ -12,7 +13,10 @@ interface ApiState {
   timerEnabled: boolean;
   timerDuration: number;
   timerStartedAt: number | null;
-  teams: { id: string; name: string; lastSeen: number; score: number }[];
+  teams: {
+    id: string; name: string; lastSeen: number; score: number;
+    answers: Record<string, { choiceIndex: number; responseSeconds: number } | number>;
+  }[];
   currentQuestion: {
     question: string;
     choices: string[];
@@ -230,6 +234,11 @@ export default function PlayPage() {
   if (phase === "reveal" && currentQuestion) {
     const myAnswer = selected;
     const correct = currentQuestion.correctIndex;
+    const myTeam = teams.find((t) => t.id === teamId);
+    const myRawAnswer = myTeam?.answers[String(questionIndex)];
+    const myPoints = myRawAnswer !== undefined && correct !== undefined
+      ? calcAnswerScore(normalizeAnswer(myRawAnswer), correct, timerEnabled)
+      : 0;
     return (
       <div style={styles.page}>
         <h2 style={styles.question}>{currentQuestion.question}</h2>
@@ -250,6 +259,21 @@ export default function PlayPage() {
         <p style={{ color: myAnswer === correct ? "#4caf50" : "#e53935", textAlign: "center", marginTop: 20, fontWeight: 700, fontSize: 20 }}>
           {myAnswer === correct ? "Bonne réponse !" : myAnswer === null || timerExpired ? "Pas de réponse" : "Mauvaise réponse"}
         </p>
+        {myAnswer === correct && (
+          <div style={{ textAlign: "center", marginTop: 8 }}>
+            <span style={{
+              display: "inline-block", background: "#1b3a1b", border: "1px solid #4caf50",
+              color: "#69f0ae", borderRadius: 20, padding: "6px 18px", fontSize: 15, fontWeight: 700,
+            }}>
+              +{myPoints} pt{myPoints > 1 ? "s" : ""}
+              {timerEnabled && myRawAnswer !== undefined && (
+                <span style={{ color: "#9ccc9c", fontWeight: 400 }}>
+                  {" "}({normalizeAnswer(myRawAnswer).responseSeconds.toFixed(1)}s)
+                </span>
+              )}
+            </span>
+          </div>
+        )}
       </div>
     );
   }

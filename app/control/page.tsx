@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Timer from "@/app/components/Timer";
+import { calcAnswerScore, normalizeAnswer } from "@/lib/score";
 
 type Phase = "lobby" | "question" | "reveal" | "debrief" | "scores";
 
@@ -151,6 +152,10 @@ export default function ControlPage() {
             const hasAnswered = rawAnswer !== undefined;
             const answerIndex = rawAnswer === undefined ? undefined : typeof rawAnswer === "number" ? rawAnswer : rawAnswer.choiceIndex;
             const isCorrect = hasAnswered && currentQuestion?.correctIndex === answerIndex;
+            const points = isCorrect && rawAnswer !== undefined && currentQuestion?.correctIndex !== undefined
+              ? calcAnswerScore(normalizeAnswer(rawAnswer), currentQuestion.correctIndex, timerEnabled)
+              : 0;
+            const responseSeconds = rawAnswer !== undefined ? normalizeAnswer(rawAnswer).responseSeconds : 0;
 
             return (
               <div key={t.id} style={{
@@ -177,6 +182,12 @@ export default function ControlPage() {
                   </span>
                 ) : (
                   <span style={{ color: "#555", fontSize: 13, fontStyle: "italic" }}>—</span>
+                )}
+                {isCorrect && phase !== "question" && (
+                  <span style={{ color: "#69f0ae", fontSize: 12, fontWeight: 700, minWidth: 70, textAlign: "right" }}>
+                    +{points} pt{points > 1 ? "s" : ""}
+                    {timerEnabled && <span style={{ color: "#4a7a4a", fontWeight: 400 }}> ({responseSeconds.toFixed(1)}s)</span>}
+                  </span>
                 )}
               </div>
             );
