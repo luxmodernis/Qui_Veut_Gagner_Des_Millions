@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Timer from "@/app/components/Timer";
 
 type Phase = "lobby" | "question" | "reveal" | "debrief" | "scores";
 
@@ -8,7 +9,10 @@ interface ApiState {
   phase: Phase;
   questionIndex: number;
   totalQuestions: number;
-  teams: { id: string; name: string; lastSeen: number }[];
+  timerEnabled: boolean;
+  timerDuration: number;
+  timerStartedAt: number | null;
+  teams: { id: string; name: string; lastSeen: number; score: number }[];
   currentQuestion: {
     question: string;
     choices: string[];
@@ -39,7 +43,8 @@ export default function TvPage() {
 
   if (!state) return <div style={styles.root} />;
 
-  const { phase, currentQuestion, questionIndex, totalQuestions, teams } = state;
+  const { phase, currentQuestion, questionIndex, totalQuestions, teams,
+    timerEnabled, timerDuration, timerStartedAt } = state;
 
   if (phase === "lobby") {
     return (
@@ -101,6 +106,7 @@ export default function TvPage() {
               }}>
                 <span style={{ fontSize: 32, minWidth: 50 }}>{medals[i] ?? `#${i + 1}`}</span>
                 <span style={{ color: i === 0 ? "#f5c518" : "#fff", fontSize: i === 0 ? 30 : 24, fontWeight: i === 0 ? 800 : 500, flex: 1 }}>{t.name}</span>
+                <span style={{ color: i === 0 ? "#f5c518" : "#aaa", fontSize: i === 0 ? 26 : 20, fontWeight: 700 }}>{(t as { score: number }).score} pt{(t as { score: number }).score > 1 ? "s" : ""}</span>
               </div>
             ))}
           </div>
@@ -114,8 +120,13 @@ export default function TvPage() {
   if (phase === "question") {
     return (
       <div style={styles.root}>
-        <div style={styles.questionBadge}>
-          Question {questionIndex + 1} / {totalQuestions}
+        <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 8 }}>
+          <div style={styles.questionBadge}>
+            Question {questionIndex + 1} / {totalQuestions}
+          </div>
+          {timerEnabled && timerStartedAt && (
+            <Timer timerStartedAt={timerStartedAt} timerDuration={timerDuration} size="lg" />
+          )}
         </div>
         <h2 style={styles.questionText}>{currentQuestion.question}</h2>
         <div style={styles.choicesGrid}>

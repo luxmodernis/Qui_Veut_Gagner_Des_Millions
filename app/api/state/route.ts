@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getState, getQuestions } from "@/lib/redis";
+import { calcTeamScore } from "@/lib/score";
 
 export const runtime = "edge";
 
@@ -11,7 +12,6 @@ export async function GET() {
       ? (() => {
           const q = questions[state.questionIndex];
           if (!q) return null;
-          // hide correctIndex during question phase
           if (state.phase === "question") {
             const { correctIndex: _c, note: _n, ...safe } = q;
             return safe;
@@ -20,16 +20,28 @@ export async function GET() {
         })()
       : null;
 
+  const teams = Object.entries(state.teams).map(([id, t]) => ({
+    id,
+    name: t.name,
+    lastSeen: t.lastSeen,
+    answers: t.answers,
+    score: calcTeamScore(t.answers, questions, state),
+  }));
+
+  // tri par score décroissant pour la phase scores
+  const sortedTeams =
+    state.phase === "scores"
+      ? [...teams].sort((a, b) => b.score - a.score)
+      : teams;
+
   return NextResponse.json({
     phase: state.phase,
     questionIndex: state.questionIndex,
     totalQuestions: questions.length,
-    teams: Object.entries(state.teams).map(([id, t]) => ({
-      id,
-      name: t.name,
-      lastSeen: t.lastSeen,
-      answers: t.answers,
-    })),
+    timerEnabled: state.timerEnabled,
+    timerDuration: state.timerDuration,
+    timerStartedAt: state.timerStartedAt,
+    teams: sortedTeams,
     currentQuestion,
   });
 }

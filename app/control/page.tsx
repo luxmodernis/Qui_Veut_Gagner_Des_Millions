@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Timer from "@/app/components/Timer";
 
 type Phase = "lobby" | "question" | "reveal" | "debrief" | "scores";
 
@@ -8,7 +9,10 @@ interface ApiState {
   phase: Phase;
   questionIndex: number;
   totalQuestions: number;
-  teams: { id: string; name: string; lastSeen: number; answers: Record<string, number> }[];
+  timerEnabled: boolean;
+  timerDuration: number;
+  timerStartedAt: number | null;
+  teams: { id: string; name: string; lastSeen: number; answers: Record<string, { choiceIndex: number; responseSeconds: number } | number>; score: number }[];
   currentQuestion: {
     question: string;
     choices: string[];
@@ -72,7 +76,8 @@ export default function ControlPage() {
 
   if (!state) return <div style={styles.center}><p style={{ color: "#fff" }}>Chargement…</p></div>;
 
-  const { phase, currentQuestion, questionIndex, totalQuestions, teams } = state;
+  const { phase, currentQuestion, questionIndex, totalQuestions, teams,
+    timerEnabled, timerDuration, timerStartedAt } = state;
   const now = Date.now();
   const answeredCount = teams.filter(t => t.answers[String(questionIndex)] !== undefined).length;
 
@@ -94,8 +99,15 @@ export default function ControlPage() {
       {/* Question + choix */}
       {currentQuestion && (
         <div style={styles.section}>
-          <p style={{ color: "#aaa", fontSize: 12, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Question</p>
-          <p style={{ color: "#fff", fontSize: 18, fontWeight: 600, marginBottom: 16 }}>{currentQuestion.question}</p>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: 16 }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ color: "#aaa", fontSize: 12, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Question</p>
+              <p style={{ color: "#fff", fontSize: 18, fontWeight: 600 }}>{currentQuestion.question}</p>
+            </div>
+            {timerEnabled && timerStartedAt && phase === "question" && (
+              <Timer timerStartedAt={timerStartedAt} timerDuration={timerDuration} size="md" />
+            )}
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             {currentQuestion.choices.map((c, i) => {
               const isCorrect = phase !== "question" && currentQuestion.correctIndex === i;
@@ -135,8 +147,9 @@ export default function ControlPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {teams.map((t) => {
             const active = now - t.lastSeen < 5000;
-            const answerIndex = t.answers[String(questionIndex)];
-            const hasAnswered = answerIndex !== undefined;
+            const rawAnswer = t.answers[String(questionIndex)];
+            const hasAnswered = rawAnswer !== undefined;
+            const answerIndex = rawAnswer === undefined ? undefined : typeof rawAnswer === "number" ? rawAnswer : rawAnswer.choiceIndex;
             const isCorrect = hasAnswered && currentQuestion?.correctIndex === answerIndex;
 
             return (
@@ -159,7 +172,7 @@ export default function ControlPage() {
                       : isCorrect ? "#69f0ae" : "#ff8a80",
                     border: `1px solid ${phase === "question" ? "#555" : isCorrect ? "#4caf50" : "#e53935"}`,
                   }}>
-                    {LETTERS[answerIndex]}
+                    {answerIndex !== undefined ? LETTERS[answerIndex] : "?"}
                     {phase !== "question" && (isCorrect ? " ✓" : " ✗")}
                   </span>
                 ) : (

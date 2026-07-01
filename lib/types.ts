@@ -7,14 +7,22 @@ export interface Question {
   note?: string;
 }
 
+export interface TeamAnswer {
+  choiceIndex: number;
+  responseSeconds: number; // temps de réponse depuis le début du timer (0 si pas de timer)
+}
+
 export interface Team {
   name: string;
-  answers: Record<string, number>; // questionIndex -> choiceIndex
+  answers: Record<string, TeamAnswer>; // questionIndex -> answer
   lastSeen: number;
 }
 
 export interface QuizState {
   phase: Phase;
   questionIndex: number;
+  timerEnabled: boolean;
+  timerDuration: number;    // secondes
+  timerStartedAt: number | null; // timestamp ms — remis à null entre les questions
   teams: Record<string, Team>;
 }

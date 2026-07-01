@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 type Phase = "lobby" | "question" | "reveal" | "debrief" | "scores";
 
@@ -15,6 +15,8 @@ interface ApiState {
   phase: Phase;
   questionIndex: number;
   totalQuestions: number;
+  timerEnabled: boolean;
+  timerDuration: number;
   teams: { id: string; name: string; lastSeen: number }[];
 }
 
@@ -50,12 +52,22 @@ export default function AdminPage() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [gotoIndex, setGotoIndex] = useState("");
+  const [timerEnabled, setTimerEnabled] = useState(false);
+  const [timerDuration, setTimerDuration] = useState(30);
+  const [timerSaved, setTimerSaved] = useState(false);
+  const timerInitRef = useRef(false);
 
   const poll = useCallback(async () => {
     if (!authed) return;
     try {
       const res = await fetch("/api/state");
-      setState(await res.json());
+      const data: ApiState = await res.json();
+      setState(data);
+      if (!timerInitRef.current) {
+        timerInitRef.current = true;
+        setTimerEnabled(data.timerEnabled ?? false);
+        setTimerDuration(data.timerDuration ?? 30);
+      }
     } catch {}
   }, [authed]);
 
@@ -208,6 +220,60 @@ export default function AdminPage() {
           Tout réinitialiser
         </button>
         <p style={{ color: "#666", fontSize: 12, marginTop: 8 }}>Remet le quiz en salle d'attente, efface toutes les équipes et réponses.</p>
+      </Section>
+
+      {/* Timer */}
+      <Section title="Chronomètre">
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+            <div
+              onClick={() => setTimerEnabled((v) => !v)}
+              style={{
+                width: 48, height: 26, borderRadius: 13, cursor: "pointer", transition: "background 0.2s", flexShrink: 0,
+                background: timerEnabled ? "#4caf50" : "#333",
+                position: "relative",
+              }}
+            >
+              <div style={{
+                position: "absolute", top: 3, left: timerEnabled ? 25 : 3, width: 20, height: 20,
+                borderRadius: "50%", background: "#fff", transition: "left 0.2s",
+              }} />
+            </div>
+            <span style={{ color: timerEnabled ? "#4caf50" : "#888", fontWeight: 600, fontSize: 14 }}>
+              {timerEnabled ? "Activé" : "Désactivé"}
+            </span>
+          </label>
+
+          {timerEnabled && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: "#aaa", fontSize: 14 }}>Durée :</span>
+              <input
+                type="number" min={5} max={300} step={5}
+                value={timerDuration}
+                onChange={(e) => setTimerDuration(Math.max(5, parseInt(e.target.value) || 30))}
+                style={{ ...styles.textInput, width: 80, textAlign: "center" }}
+              />
+              <span style={{ color: "#aaa", fontSize: 14 }}>secondes</span>
+            </div>
+          )}
+
+          <button
+            onClick={async () => {
+              await post("admin-save-settings", { timerEnabled, timerDuration });
+              setTimerSaved(true);
+              setTimeout(() => setTimerSaved(false), 3000);
+            }}
+            style={{ ...styles.btn, background: "#7e57c2", color: "#fff" }}
+          >
+            Enregistrer
+          </button>
+          {timerSaved && <span style={{ color: "#4caf50", fontSize: 14 }}>✓ Sauvegardé</span>}
+        </div>
+        <p style={{ color: "#555", fontSize: 12, marginTop: 10 }}>
+          {timerEnabled
+            ? `Les équipes auront ${timerDuration}s pour répondre. Plus on répond vite, plus on marque de points (jusqu'à 10 pts).`
+            : "Sans chronomètre : 1 point par bonne réponse."}
+        </p>
       </Section>
 
       {/* Éditeur questions */}

@@ -12,9 +12,15 @@ const QUESTIONS_KEY = "quiz:questions";
 export async function getState(): Promise<QuizState> {
   const state = await redis.get<QuizState>(STATE_KEY);
   if (!state) {
-    return { phase: "lobby", questionIndex: 0, teams: {} };
+    return { phase: "lobby", questionIndex: 0, timerEnabled: false, timerDuration: 30, timerStartedAt: null, teams: {} };
   }
-  return state;
+  // migration : combler les champs absents si state existant avant la feature timer
+  return {
+    ...state,
+    timerEnabled: state.timerEnabled ?? false,
+    timerDuration: state.timerDuration ?? 30,
+    timerStartedAt: state.timerStartedAt ?? null,
+  };
 }
 
 export async function setState(state: QuizState): Promise<void> {
