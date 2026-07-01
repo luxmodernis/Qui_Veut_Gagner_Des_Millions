@@ -225,7 +225,10 @@ export default function ControlPage() {
                     + Ajouter
                   </button>
                 ) : (
-                  <span style={{ color: "#555", fontSize: 13, fontStyle: "italic" }}>—</span>
+                  <span style={{
+                    display: "inline-block", width: 24, height: 24, borderRadius: 5,
+                    border: "1px solid #333", background: "#1a1a2a",
+                  }} />
                 )}
                 {isCorrect && phase !== "question" && (
                   <span style={{ color: "#69f0ae", fontSize: 12, fontWeight: 700, minWidth: 70, textAlign: "right" }}>
@@ -242,7 +245,21 @@ export default function ControlPage() {
 
       {/* Récapitulatif de fin */}
       {phase === "scores" && (
-        <ScoresRecap teams={teams} questions={allQuestions} timerEnabled={timerEnabled} />
+        <>
+          <ScoresRecap teams={teams} questions={allQuestions} timerEnabled={timerEnabled} />
+          <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
+            <Btn
+              onClick={() => { if (confirm("Rejouer la partie ? Les équipes restent connectées mais leurs scores et réponses seront effacés.")) post("host-replay"); }}
+              color="#ffa726"
+              label="🔄 Rejouer (garder les équipes)"
+            />
+            <Btn
+              onClick={() => { if (confirm("Réinitialiser TOUT le quiz ? Les équipes devront se reconnecter.")) post("host-reset-all"); }}
+              color="#e53935"
+              label="Tout réinitialiser"
+            />
+          </div>
+        </>
       )}
 
       {/* Actions */}
@@ -250,7 +267,14 @@ export default function ControlPage() {
         {phase === "lobby" && (
           <Btn onClick={async () => { const r = await post("host-start"); if (!r.ok) alert(r.error); }} color="#f5c518" label="▶ Démarrer" />
         )}
-        {phase === "question" && <Btn onClick={() => post("host-reveal")} color="#f5c518" label="Révéler la réponse" />}
+        {phase === "question" && (
+          <Btn
+            onClick={() => post("host-reveal")}
+            color="#f5c518"
+            label={timerEnabled && !timeIsUp ? "Révéler la réponse (attendre la fin du chrono)" : "Révéler la réponse"}
+            disabled={timerEnabled && !timeIsUp}
+          />
+        )}
         {phase === "reveal" && currentQuestion?.note && <Btn onClick={() => post("host-debrief")} color="#7e57c2" label="Afficher le débrief" />}
         {(phase === "reveal" || phase === "debrief") && (
           <Btn onClick={() => post("host-next")} color="#42a5f5"
@@ -424,11 +448,13 @@ function ScoresRecap({
   );
 }
 
-function Btn({ onClick, color, label }: { onClick: () => void; color: string; label: string }) {
+function Btn({ onClick, color, label, disabled }: { onClick: () => void; color: string; label: string; disabled?: boolean }) {
   return (
-    <button onClick={onClick} style={{
+    <button onClick={onClick} disabled={disabled} style={{
       padding: "12px 24px", borderRadius: 10, border: "none",
-      background: color, color: "#000", fontSize: 15, fontWeight: 700, cursor: "pointer",
+      background: disabled ? "#333" : color, color: disabled ? "#777" : "#000",
+      fontSize: 15, fontWeight: 700, cursor: disabled ? "default" : "pointer",
+      opacity: disabled ? 0.7 : 1,
     }}>
       {label}
     </button>

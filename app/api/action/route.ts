@@ -73,7 +73,7 @@ async function handlePost(req: NextRequest) {
   }
 
   // ── Host actions (code A) ─────────────────────────────────────────────────
-  const hostActions = ["host-start", "host-reveal", "host-debrief", "host-next", "host-scores", "host-set-answer"];
+  const hostActions = ["host-start", "host-reveal", "host-debrief", "host-next", "host-scores", "host-set-answer", "host-replay", "host-reset-all"];
   if (hostActions.includes(action)) {
     if (!authorized(req, getCodeA())) return err("unauthorized", 401);
     const state = await getState();
@@ -101,8 +101,24 @@ async function handlePost(req: NextRequest) {
       state.timerStartedAt = state.timerEnabled ? Date.now() : null;
     } else if (action === "host-reveal") {
       if (state.phase !== "question") return err("wrong phase");
+      if (state.timerEnabled && state.timerStartedAt) {
+        const elapsed = (Date.now() - state.timerStartedAt) / 1000;
+        if (elapsed < state.timerDuration) return err("Le chrono n'est pas encore écoulé");
+      }
       state.phase = "reveal";
       state.timerStartedAt = null;
+    } else if (action === "host-replay") {
+      state.phase = "lobby";
+      state.questionIndex = 0;
+      state.timerStartedAt = null;
+      for (const team of Object.values(state.teams)) {
+        team.answers = {};
+      }
+    } else if (action === "host-reset-all") {
+      state.phase = "lobby";
+      state.questionIndex = 0;
+      state.timerStartedAt = null;
+      state.teams = {};
     } else if (action === "host-debrief") {
       if (state.phase !== "reveal") return err("wrong phase");
       state.phase = "debrief";
