@@ -87,7 +87,11 @@ export default function ControlPage() {
       {/* Top bar */}
       <div style={styles.topBar}>
         <span style={{ color: "#f5c518", fontWeight: 700, fontSize: 18 }}>
-          Question {questionIndex + 1}/{totalQuestions}
+          {totalQuestions === 0
+            ? "Aucune question enregistrée"
+            : (phase === "lobby" || phase === "scores")
+              ? `${totalQuestions} question${totalQuestions > 1 ? "s" : ""} prête${totalQuestions > 1 ? "s" : ""}`
+              : `Question ${questionIndex + 1}/${totalQuestions}`}
         </span>
         <span style={{ color: "#aaa" }}>
           Phase : <strong style={{ color: "#fff" }}>{{ lobby: "Salle d'attente", question: "Question", reveal: "Révélation", debrief: "Débrief", scores: "Scores" }[phase]}</strong>

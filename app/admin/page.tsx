@@ -114,8 +114,10 @@ export default function AdminPage() {
   const [genPreview, setGenPreview] = useState<Question[]>([]);
 
   // Bots — tracking des réponses déjà envoyées par cette session
+  const [botsEnabled, setBotsEnabled] = useState(true);
   const botSubmittedRef = useRef<Set<string>>(new Set());
   const lastQuestionIndexRef = useRef<number>(-1);
+  const questionEnteredAtRef = useRef<number>(Date.now());
 
   const poll = useCallback(async () => {
     if (!authed) return;
@@ -137,11 +139,14 @@ export default function AdminPage() {
       if (data.questionIndex !== lastQuestionIndexRef.current) {
         lastQuestionIndexRef.current = data.questionIndex;
         botSubmittedRef.current = new Set();
+        questionEnteredAtRef.current = Date.now();
       }
 
-      // Auto-réponse des bots
-      if (data.phase === "question" && data.timerStartedAt) {
-        const elapsed = (Date.now() - data.timerStartedAt) / 1000;
+      // Auto-réponse des bots (fonctionne avec ou sans chrono activé)
+      if (botsEnabled && data.phase === "question") {
+        const elapsed = data.timerStartedAt
+          ? (Date.now() - data.timerStartedAt) / 1000
+          : (Date.now() - questionEnteredAtRef.current) / 1000;
         for (const team of data.teams) {
           if (!team.isBot) continue;
           const key = `${team.id}:${data.questionIndex}`;
@@ -162,7 +167,7 @@ export default function AdminPage() {
         }
       }
     } catch {}
-  }, [authed]);
+  }, [authed, botsEnabled]);
 
   useEffect(() => {
     poll();
@@ -188,19 +193,27 @@ export default function AdminPage() {
 
   async function handleSave() {
     setSaveError("");
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i];
-      if (!q.question.trim()) { setSaveError(`Question ${i + 1} : texte manquant`); return; }
-      for (let j = 0; j < 4; j++) {
-        if (!q.choices[j].trim()) { setSaveError(`Question ${i + 1} : proposition ${LETTERS[j]} manquante`); return; }
+    try {
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        if (!q.question?.trim()) { setSaveError(`Question ${i + 1} : texte manquant`); return; }
+        if (!Array.isArray(q.choices) || q.choices.length !== 4) {
+          setSaveError(`Question ${i + 1} : il faut exactement 4 propositions (trouvé ${q.choices?.length ?? 0})`);
+          return;
+        }
+        for (let j = 0; j < 4; j++) {
+          if (!q.choices[j]?.trim()) { setSaveError(`Question ${i + 1} : proposition ${LETTERS[j]} manquante`); return; }
+        }
       }
+      const res = await post("admin-save-questions", { questions });
+      if (res.ok) {
+        setSavedSnapshot(JSON.stringify(questions));
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3000);
+      } else setSaveError(res.error ?? "Erreur serveur");
+    } catch (e) {
+      setSaveError(`Erreur inattendue : ${e instanceof Error ? e.message : String(e)}`);
     }
-    const res = await post("admin-save-questions", { questions });
-    if (res.ok) {
-      setSavedSnapshot(JSON.stringify(questions));
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } else setSaveError(res.error ?? "Erreur serveur");
   }
 
   async function handleGenerate() {
@@ -215,7 +228,25 @@ export default function AdminPage() {
       });
       const data = await res.json();
       if (!res.ok) { setGenError(data.error ?? "Erreur"); return; }
-      setGenPreview(data.questions ?? []);
+      const raw = Array.isArray(data.questions) ? data.questions : [];
+      const normalized: Question[] = raw
+        .filter((q: unknown): q is Record<string, unknown> => !!q && typeof q === "object" && typeof (q as Record<string, unknown>).question === "string")
+        .map((q: Record<string, unknown>) => {
+          const choicesRaw = Array.isArray(q.choices) ? (q.choices as unknown[]).map(String) : [];
+          const choices: string[] = [...choicesRaw];
+          while (choices.length < 4) choices.push("");
+          const trimmed = choices.slice(0, 4) as [string, string, string, string];
+          const idx = typeof q.correctIndex === "number" ? q.correctIndex : parseInt(String(q.correctIndex));
+          return {
+            question: String(q.question),
+            choices: trimmed,
+            correctIndex: isNaN(idx) ? 0 : Math.min(3, Math.max(0, idx)),
+            note: typeof q.note === "string" ? q.note : "",
+          };
+        })
+        .filter((q: Question) => q.choices.every((c) => c.trim().length > 0));
+      if (normalized.length === 0) { setGenError("Réponse de l'IA incomplète ou mal formée — réessaie"); return; }
+      setGenPreview(normalized);
     } catch {
       setGenError("Erreur réseau");
     } finally {
@@ -323,8 +354,20 @@ export default function AdminPage() {
 
       {/* Robots */}
       <Section title={`Robots de test (${botTeams.length})`}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          <div
+            onClick={() => setBotsEnabled((v) => !v)}
+            style={{ width: 48, height: 26, borderRadius: 13, cursor: "pointer", transition: "background 0.2s", flexShrink: 0, background: botsEnabled ? "#4caf50" : "#333", position: "relative" }}
+          >
+            <div style={{ position: "absolute", top: 3, left: botsEnabled ? 25 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+          </div>
+          <span style={{ color: botsEnabled ? "#4caf50" : "#888", fontWeight: 600, fontSize: 14 }}>
+            {botsEnabled ? "Robots actifs" : "Robots en pause"}
+          </span>
+        </div>
         <p style={{ color: "#666", fontSize: 12, marginBottom: 10 }}>
-          Les robots répondent automatiquement 3–9 s après le début de chaque question. Ils apparaissent sur l'écran animateur et dans les scores.
+          Les robots répondent automatiquement 3–9 s après le début de chaque question (avec ou sans chrono). Ils apparaissent sur l'écran animateur et dans les scores.
+          Cette réponse automatique nécessite que cet onglet admin reste ouvert.
         </p>
         {botTeams.map((t) => {
           const hasAnswered = t.answers[String(questionIndex)] !== undefined;
