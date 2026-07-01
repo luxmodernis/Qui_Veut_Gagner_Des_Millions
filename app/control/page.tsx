@@ -146,9 +146,14 @@ export default function ControlPage() {
 
       {/* Équipes + réponses */}
       <div style={styles.section}>
-        <p style={{ color: "#aaa", fontSize: 12, marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>
+        <p style={{ color: "#aaa", fontSize: 12, marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>
           Équipes — {answeredCount}/{teams.length} ont répondu
         </p>
+        {phase === "question" && (
+          <p style={{ color: "#555", fontSize: 11, marginBottom: 10 }}>
+            Si une équipe n'apparaît pas comme ayant répondu, cliquez sur la lettre correspondante pour enregistrer sa réponse manuellement.
+          </p>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {teams.map((t) => {
             const active = now - t.lastSeen < 5000;
@@ -184,6 +189,26 @@ export default function ControlPage() {
                     {answerIndex !== undefined ? LETTERS[answerIndex] : "?"}
                     {phase !== "question" && (isCorrect ? " ✓" : " ✗")}
                   </span>
+                ) : phase === "question" ? (
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {LETTERS.map((letter, i) => (
+                      <button
+                        key={i}
+                        onClick={async () => {
+                          const r = await post("host-set-answer", { teamId: t.id, choiceIndex: i });
+                          if (!r.ok) alert(r.error);
+                        }}
+                        title={`Enregistrer manuellement la réponse ${letter} pour ${t.name}`}
+                        style={{
+                          width: 24, height: 24, borderRadius: 5, border: "1px solid #444",
+                          background: CHOICE_COLORS[i] + "33", color: "#ccc",
+                          fontSize: 11, fontWeight: 700, cursor: "pointer", padding: 0,
+                        }}
+                      >
+                        {letter}
+                      </button>
+                    ))}
+                  </div>
                 ) : (
                   <span style={{ color: "#555", fontSize: 13, fontStyle: "italic" }}>—</span>
                 )}

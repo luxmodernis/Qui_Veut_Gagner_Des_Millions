@@ -73,11 +73,26 @@ async function handlePost(req: NextRequest) {
   }
 
   // ── Host actions (code A) ─────────────────────────────────────────────────
-  const hostActions = ["host-start", "host-reveal", "host-debrief", "host-next", "host-scores"];
+  const hostActions = ["host-start", "host-reveal", "host-debrief", "host-next", "host-scores", "host-set-answer"];
   if (hostActions.includes(action)) {
     if (!authorized(req, getCodeA())) return err("unauthorized", 401);
     const state = await getState();
     const questions = await getQuestions();
+
+    if (action === "host-set-answer") {
+      const { teamId, choiceIndex } = body as { teamId: string; choiceIndex: number };
+      if (state.phase !== "question") return err("Seulement possible pendant la question en cours");
+      const team = state.teams[teamId];
+      if (!team) return err("Équipe introuvable");
+      if (team.answers[String(state.questionIndex)] !== undefined) return err("Cette équipe a déjà une réponse enregistrée");
+      if (choiceIndex < 0 || choiceIndex > 3) return err("Choix invalide");
+      const responseSeconds = state.timerEnabled && state.timerStartedAt
+        ? Math.min((Date.now() - state.timerStartedAt) / 1000, state.timerDuration)
+        : 0;
+      team.answers[String(state.questionIndex)] = { choiceIndex, responseSeconds };
+      await setState(state);
+      return NextResponse.json({ ok: true });
+    }
 
     if (action === "host-start") {
       if (questions.length === 0) return err("Aucune question enregistrée — ajoutez et enregistrez des questions dans l'admin avant de démarrer");
