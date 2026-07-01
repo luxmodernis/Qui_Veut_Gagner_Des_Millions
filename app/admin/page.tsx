@@ -580,6 +580,16 @@ export default function AdminPage() {
           <button onClick={handleSave} style={{ ...styles.btn, background: "#4caf50", color: "#000" }}>
             Enregistrer les questions
           </button>
+          <button
+            onClick={() => {
+              if (questions.length === 0) return;
+              if (!confirm(`Supprimer les ${questions.length} question(s) ? Cliquez ensuite sur « Enregistrer les questions » pour valider.`)) return;
+              setQuestions([]);
+            }}
+            style={{ ...styles.btn, background: "#3a1a1a", color: "#e53935" }}
+          >
+            Tout supprimer
+          </button>
           {saved && <span style={{ color: "#4caf50", fontSize: 14 }}>✓ Sauvegardé</span>}
           {saveError && <span style={{ color: "#e53935", fontSize: 13 }}>{saveError}</span>}
         </div>
