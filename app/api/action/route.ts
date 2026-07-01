@@ -99,6 +99,8 @@ async function handlePost(req: NextRequest) {
       state.phase = "question";
       state.questionIndex = 0;
       state.timerStartedAt = state.timerEnabled ? Date.now() : null;
+      // fige la banque de questions pour toute la durée de cette partie
+      state.playedQuestions = questions;
     } else if (action === "host-reveal") {
       if (state.phase !== "question") return err("wrong phase");
       const teamsList = Object.values(state.teams);
@@ -113,6 +115,7 @@ async function handlePost(req: NextRequest) {
       state.phase = "lobby";
       state.questionIndex = 0;
       state.timerStartedAt = null;
+      state.playedQuestions = null;
       for (const team of Object.values(state.teams)) {
         team.answers = {};
       }
@@ -120,13 +123,15 @@ async function handlePost(req: NextRequest) {
       state.phase = "lobby";
       state.questionIndex = 0;
       state.timerStartedAt = null;
+      state.playedQuestions = null;
       state.teams = {};
     } else if (action === "host-debrief") {
       if (state.phase !== "reveal") return err("wrong phase");
       state.phase = "debrief";
     } else if (action === "host-next") {
+      const effectiveQuestions = state.playedQuestions ?? questions;
       const next = state.questionIndex + 1;
-      if (next >= questions.length) {
+      if (next >= effectiveQuestions.length) {
         state.phase = "scores";
         state.timerStartedAt = null;
       } else {
@@ -161,6 +166,7 @@ async function handlePost(req: NextRequest) {
       state.questionIndex = questionIndex;
       state.phase = "question";
       state.timerStartedAt = state.timerEnabled ? Date.now() : null;
+      if (!state.playedQuestions) state.playedQuestions = questions;
     } else if (action === "admin-reset-team") {
       const { teamId } = body as { teamId: string };
       delete state.teams[teamId];
@@ -168,12 +174,14 @@ async function handlePost(req: NextRequest) {
       state.phase = "lobby";
       state.questionIndex = 0;
       state.timerStartedAt = null;
+      state.playedQuestions = null;
       state.teams = {};
     } else if (action === "admin-replay") {
       // Repart au début avec les mêmes équipes, mais efface leurs réponses/scores
       state.phase = "lobby";
       state.questionIndex = 0;
       state.timerStartedAt = null;
+      state.playedQuestions = null;
       for (const team of Object.values(state.teams)) {
         team.answers = {};
       }
@@ -186,6 +194,7 @@ async function handlePost(req: NextRequest) {
       } else if (phase !== "question") {
         state.timerStartedAt = null;
       }
+      if (phase === "question" && !state.playedQuestions) state.playedQuestions = questions;
     } else if (action === "admin-save-questions") {
       const { questions: incoming } = body as { questions: Question[] };
       if (!Array.isArray(incoming)) return err("Format de questions invalide (pas un tableau)");

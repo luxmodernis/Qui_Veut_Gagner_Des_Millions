@@ -22,6 +22,7 @@ interface ApiState {
     correctIndex?: number;
     note?: string;
   } | null;
+  playedQuestions: FullQuestion[] | null;
 }
 
 interface FullQuestion {
@@ -49,7 +50,6 @@ export default function ControlPage() {
   const [authError, setAuthError] = useState("");
   const [state, setState] = useState<ApiState | null>(null);
   const [manualTeamId, setManualTeamId] = useState<string | null>(null);
-  const [allQuestions, setAllQuestions] = useState<FullQuestion[] | null>(null);
 
   const poll = useCallback(async () => {
     if (!authed) return;
@@ -64,14 +64,6 @@ export default function ControlPage() {
     const id = setInterval(poll, 1500);
     return () => clearInterval(id);
   }, [poll]);
-
-  useEffect(() => {
-    if (!authed || state?.phase !== "scores" || allQuestions) return;
-    fetch("/api/questions")
-      .then((r) => r.json())
-      .then((q: FullQuestion[]) => setAllQuestions(Array.isArray(q) ? q : null))
-      .catch(() => {});
-  }, [authed, state?.phase, allQuestions]);
 
   async function handleAuth() {
     const res = await post("auth-control", { code });
@@ -97,7 +89,7 @@ export default function ControlPage() {
   if (!state) return <div style={styles.center}><p style={{ color: "#fff" }}>Chargement…</p></div>;
 
   const { phase, currentQuestion, questionIndex, totalQuestions, teams,
-    timerEnabled, timerDuration, timerStartedAt } = state;
+    timerEnabled, timerDuration, timerStartedAt, playedQuestions } = state;
   const now = Date.now();
   const answeredCount = teams.filter(t => t.answers[String(questionIndex)] !== undefined).length;
   const timeIsUp = !timerEnabled || (timerStartedAt !== null && (now - timerStartedAt) / 1000 >= timerDuration);
@@ -249,7 +241,7 @@ export default function ControlPage() {
       {/* Récapitulatif de fin */}
       {phase === "scores" && (
         <>
-          <ScoresRecap teams={teams} questions={allQuestions} timerEnabled={timerEnabled} totalQuestions={totalQuestions} />
+          <ScoresRecap teams={teams} questions={playedQuestions} timerEnabled={timerEnabled} totalQuestions={totalQuestions} />
           <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
             <Btn
               onClick={() => { if (confirm("Rejouer la partie ? Les équipes restent connectées mais leurs scores et réponses seront effacés.")) post("host-replay"); }}
@@ -364,24 +356,20 @@ function ManualAnswerModal({
 }
 
 function ScoresRecap({
-  teams, questions: allQuestions, timerEnabled, totalQuestions,
+  teams, questions, timerEnabled,
 }: {
   teams: ApiState["teams"];
   questions: FullQuestion[] | null;
   timerEnabled: boolean;
   totalQuestions: number;
 }) {
-  if (!allQuestions) {
+  if (!questions) {
     return (
       <div style={{ ...styles.section, textAlign: "center", color: "#888", fontSize: 13 }}>
-        Chargement du récapitulatif…
+        Récapitulatif indisponible pour cette partie.
       </div>
     );
   }
-
-  // La liste de questions peut avoir été modifiée depuis dans l'admin ; on ne
-  // garde que celles réellement jouées durant cette partie (totalQuestions).
-  const questions = allQuestions.slice(0, totalQuestions);
 
   const ranked = [...teams].sort((a, b) => b.score - a.score);
   const teamCorrectCount = (t: ApiState["teams"][number]) =>
@@ -412,13 +400,6 @@ function ScoresRecap({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {allQuestions.length !== totalQuestions && (
-        <div style={{ ...styles.section, background: "#3a2f00", border: "1px solid #f5c518" }}>
-          <p style={{ color: "#f5c518", fontSize: 12 }}>
-            ⚠️ Les questions ont été modifiées depuis cette partie — le récapitulatif peut ne pas correspondre exactement à ce qui a été joué.
-          </p>
-        </div>
-      )}
       <div style={styles.section}>
         <p style={{ color: "#aaa", fontSize: 12, marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>
           Classement détaillé

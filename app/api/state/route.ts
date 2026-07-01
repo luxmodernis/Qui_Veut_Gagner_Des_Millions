@@ -5,7 +5,12 @@ import { calcTeamScore } from "@/lib/score";
 export const runtime = "edge";
 
 export async function GET() {
-  const [state, questions] = await Promise.all([getState(), getQuestions()]);
+  const [state, liveQuestions] = await Promise.all([getState(), getQuestions()]);
+
+  // Utilise l'instantané figé au démarrage de la partie si disponible, pour
+  // que le score et le récap restent cohérents même si la banque de questions
+  // est modifiée pendant que la partie est en cours.
+  const questions = state.playedQuestions ?? liveQuestions;
 
   const currentQuestion =
     state.phase !== "lobby" && state.phase !== "scores"
@@ -44,5 +49,8 @@ export async function GET() {
     timerStartedAt: state.timerStartedAt,
     teams: sortedTeams,
     currentQuestion,
+    // n'expose la banque complète (avec bonnes réponses) qu'une fois la partie
+    // terminée, pour ne pas divulguer les réponses des questions à venir
+    playedQuestions: state.phase === "scores" ? questions : null,
   });
 }
