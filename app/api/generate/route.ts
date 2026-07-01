@@ -11,8 +11,8 @@ export async function POST(req: NextRequest) {
   const adminCode = req.cookies.get("auth_admin")?.value;
   if (adminCode !== getCodeB()) return err("unauthorized", 401);
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return err("ANTHROPIC_API_KEY manquant dans les variables d'environnement", 500);
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return err("GROQ_API_KEY manquant dans les variables d'environnement", 500);
 
   const { count = 3, topic = "" } = await req.json() as { count?: number; topic?: string };
   const n = Math.min(10, Math.max(1, count));
@@ -22,39 +22,44 @@ export async function POST(req: NextRequest) {
     : "Thème libre : culture générale variée (géographie, sciences, histoire, art, sport…).";
 
   const prompt = `Génère ${n} questions de quiz en français. ${topicLine}
-Réponds UNIQUEMENT avec un tableau JSON valide, sans markdown, sans commentaires, sans texte avant ou après.
+Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans commentaires, sans texte avant ou après.
 Format exact (respecte les virgules, les guillemets, les index) :
-[{"question":"...","choices":["option A","option B","option C","option D"],"correctIndex":2,"note":"explication courte de la bonne réponse"}]
+{"questions":[{"question":"...","choices":["option A","option B","option C","option D"],"correctIndex":2,"note":"explication courte de la bonne réponse"}]}
 Règles : correctIndex est l'index 0-3 de la bonne réponse dans choices. Les mauvaises réponses doivent être plausibles. La note explique brièvement pourquoi c'est la bonne réponse.`;
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
+      Authorization: `Bearer ${apiKey}`,
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 2048,
+      model: "llama-3.3-70b-versatile",
       messages: [{ role: "user", content: prompt }],
+      temperature: 0.8,
+      response_format: { type: "json_object" },
     }),
   });
 
   if (!response.ok) {
     const text = await response.text();
-    return err(`Erreur Anthropic : ${text}`, 500);
+    return err(`Erreur Groq : ${text}`, 500);
   }
 
-  const data = await response.json() as { content: { type: string; text: string }[] };
-  const raw = data.content.find((c) => c.type === "text")?.text ?? "[]";
+  const data = await response.json() as { choices: { message: { content: string } }[] };
+  const raw = data.choices[0]?.message?.content ?? "[]";
 
-  let questions;
+  let parsed: unknown;
   try {
-    questions = JSON.parse(raw);
+    parsed = JSON.parse(raw);
   } catch {
     return err("Réponse invalide de l'IA — réessaie", 500);
   }
+
+  // Le mode JSON de Groq force un objet racine ; on accepte {"questions":[...]} ou directement [...]
+  const questions = Array.isArray(parsed)
+    ? parsed
+    : (parsed as { questions?: unknown }).questions ?? [];
 
   return NextResponse.json({ questions });
 }
