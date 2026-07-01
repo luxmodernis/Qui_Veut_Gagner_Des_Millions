@@ -409,7 +409,7 @@ export default function AdminPage() {
         </div>
         <p style={{ color: "#555", fontSize: 12, marginTop: 10 }}>
           {timerEnabled
-            ? `Les équipes auront ${timerDuration}s pour répondre. Plus on répond vite, plus on marque de points (jusqu'à 10 pts).`
+            ? `Les équipes auront ${timerDuration}s pour répondre. Score dégressif : 10 pts si réponse instantanée, ~15% de moins par seconde d'attente, minimum 1 pt si correct.`
             : "Sans chronomètre : 1 point par bonne réponse."}
         </p>
       </Section>
