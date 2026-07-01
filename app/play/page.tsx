@@ -232,10 +232,10 @@ export default function PlayPage() {
   }
 
   if (phase === "reveal" && currentQuestion) {
-    const myAnswer = selected;
     const correct = currentQuestion.correctIndex;
     const myTeam = teams.find((t) => t.id === teamId);
     const myRawAnswer = myTeam?.answers[String(questionIndex)];
+    const myAnswer = myRawAnswer !== undefined ? normalizeAnswer(myRawAnswer).choiceIndex : null;
     const myPoints = myRawAnswer !== undefined && correct !== undefined
       ? calcAnswerScore(normalizeAnswer(myRawAnswer), correct, timerEnabled)
       : 0;
@@ -257,7 +257,7 @@ export default function PlayPage() {
           ))}
         </div>
         <p style={{ color: myAnswer === correct ? "#4caf50" : "#e53935", textAlign: "center", marginTop: 20, fontWeight: 700, fontSize: 20 }}>
-          {myAnswer === correct ? "Bonne réponse !" : myAnswer === null || timerExpired ? "Pas de réponse" : "Mauvaise réponse"}
+          {myAnswer === correct ? "Bonne réponse !" : myAnswer === null ? "Pas de réponse" : "Mauvaise réponse"}
         </p>
         {myAnswer === correct && (
           <div style={{ textAlign: "center", marginTop: 8 }}>
