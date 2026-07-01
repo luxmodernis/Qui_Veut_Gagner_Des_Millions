@@ -100,24 +100,29 @@ export default function ControlPage() {
     timerEnabled, timerDuration, timerStartedAt } = state;
   const now = Date.now();
   const answeredCount = teams.filter(t => t.answers[String(questionIndex)] !== undefined).length;
+  const timeIsUp = !timerEnabled || (timerStartedAt !== null && (now - timerStartedAt) / 1000 >= timerDuration);
 
   return (
     <div style={styles.page}>
       {/* Top bar */}
       <div style={styles.topBar}>
-        <span style={{ color: "#f5c518", fontWeight: 700, fontSize: 18 }}>
-          {totalQuestions === 0
-            ? "Aucune question enregistrée"
-            : (phase === "lobby" || phase === "scores")
-              ? `${totalQuestions} question${totalQuestions > 1 ? "s" : ""} prête${totalQuestions > 1 ? "s" : ""}`
-              : `Question ${questionIndex + 1}/${totalQuestions}`}
-        </span>
+        {phase !== "scores" && (
+          <span style={{ color: "#f5c518", fontWeight: 700, fontSize: 18 }}>
+            {totalQuestions === 0
+              ? "Aucune question enregistrée"
+              : phase === "lobby"
+                ? `${totalQuestions} question${totalQuestions > 1 ? "s" : ""} prête${totalQuestions > 1 ? "s" : ""}`
+                : `Question ${questionIndex + 1}/${totalQuestions}`}
+          </span>
+        )}
         <span style={{ color: "#aaa" }}>
           Phase : <strong style={{ color: "#fff" }}>{{ lobby: "Salle d'attente", question: "Question", reveal: "Révélation", debrief: "Débrief", scores: "Scores" }[phase]}</strong>
         </span>
-        <span style={{ color: "#aaa", fontSize: 14 }}>
-          {teams.filter(t => now - t.lastSeen < 5000).length}/{teams.length} actives
-        </span>
+        {phase !== "scores" && (
+          <span style={{ color: "#aaa", fontSize: 14 }}>
+            {teams.filter(t => now - t.lastSeen < 5000).length}/{teams.length} actives
+          </span>
+        )}
       </div>
 
       {/* Question + choix */}
@@ -164,11 +169,12 @@ export default function ControlPage() {
       )}
 
       {/* Équipes + réponses */}
+      {phase !== "scores" && (
       <div style={styles.section}>
         <p style={{ color: "#aaa", fontSize: 12, marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>
           Équipes — {answeredCount}/{teams.length} ont répondu
         </p>
-        {phase === "question" && (
+        {phase === "question" && timeIsUp && (
           <p style={{ color: "#555", fontSize: 11, marginBottom: 10 }}>
             Si une équipe n'apparaît pas comme ayant répondu, cliquez sur « Ajouter » pour enregistrer sa réponse manuellement.
           </p>
@@ -208,7 +214,7 @@ export default function ControlPage() {
                     {answerIndex !== undefined ? LETTERS[answerIndex] : "?"}
                     {phase !== "question" && (isCorrect ? " ✓" : " ✗")}
                   </span>
-                ) : phase === "question" ? (
+                ) : phase === "question" && timeIsUp ? (
                   <button
                     onClick={() => setManualTeamId(t.id)}
                     style={{
@@ -232,6 +238,7 @@ export default function ControlPage() {
           })}
         </div>
       </div>
+      )}
 
       {/* Récapitulatif de fin */}
       {phase === "scores" && (
