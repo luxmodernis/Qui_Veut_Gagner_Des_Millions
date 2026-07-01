@@ -249,7 +249,7 @@ export default function ControlPage() {
       {/* Récapitulatif de fin */}
       {phase === "scores" && (
         <>
-          <ScoresRecap teams={teams} questions={allQuestions} timerEnabled={timerEnabled} />
+          <ScoresRecap teams={teams} questions={allQuestions} timerEnabled={timerEnabled} totalQuestions={totalQuestions} />
           <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
             <Btn
               onClick={() => { if (confirm("Rejouer la partie ? Les équipes restent connectées mais leurs scores et réponses seront effacés.")) post("host-replay"); }}
@@ -364,19 +364,24 @@ function ManualAnswerModal({
 }
 
 function ScoresRecap({
-  teams, questions, timerEnabled,
+  teams, questions: allQuestions, timerEnabled, totalQuestions,
 }: {
   teams: ApiState["teams"];
   questions: FullQuestion[] | null;
   timerEnabled: boolean;
+  totalQuestions: number;
 }) {
-  if (!questions) {
+  if (!allQuestions) {
     return (
       <div style={{ ...styles.section, textAlign: "center", color: "#888", fontSize: 13 }}>
         Chargement du récapitulatif…
       </div>
     );
   }
+
+  // La liste de questions peut avoir été modifiée depuis dans l'admin ; on ne
+  // garde que celles réellement jouées durant cette partie (totalQuestions).
+  const questions = allQuestions.slice(0, totalQuestions);
 
   const ranked = [...teams].sort((a, b) => b.score - a.score);
   const teamCorrectCount = (t: ApiState["teams"][number]) =>
@@ -407,6 +412,13 @@ function ScoresRecap({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {allQuestions.length !== totalQuestions && (
+        <div style={{ ...styles.section, background: "#3a2f00", border: "1px solid #f5c518" }}>
+          <p style={{ color: "#f5c518", fontSize: 12 }}>
+            ⚠️ Les questions ont été modifiées depuis cette partie — le récapitulatif peut ne pas correspondre exactement à ce qui a été joué.
+          </p>
+        </div>
+      )}
       <div style={styles.section}>
         <p style={{ color: "#aaa", fontSize: 12, marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>
           Classement détaillé
