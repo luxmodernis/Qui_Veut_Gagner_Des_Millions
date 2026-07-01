@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getQuestions } from "@/lib/redis";
-import { getCodeB } from "@/lib/auth";
+import { getCodeA, getCodeB } from "@/lib/auth";
 
 export const runtime = "edge";
 
 export async function GET(req: NextRequest) {
-  const cookie = req.cookies.get("auth_admin")?.value;
-  if (cookie !== getCodeB()) {
+  const admin = req.cookies.get("auth_admin")?.value === getCodeB();
+  const host = req.cookies.get("auth_control")?.value === getCodeA();
+  if (!admin && !host) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const questions = await getQuestions();

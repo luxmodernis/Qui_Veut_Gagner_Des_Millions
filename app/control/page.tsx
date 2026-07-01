@@ -6,6 +6,8 @@ import { calcAnswerScore, normalizeAnswer } from "@/lib/score";
 
 type Phase = "lobby" | "question" | "reveal" | "debrief" | "scores";
 
+interface ApiTeamAnswer { choiceIndex: number; responseSeconds: number }
+
 interface ApiState {
   phase: Phase;
   questionIndex: number;
@@ -13,13 +15,20 @@ interface ApiState {
   timerEnabled: boolean;
   timerDuration: number;
   timerStartedAt: number | null;
-  teams: { id: string; name: string; lastSeen: number; answers: Record<string, { choiceIndex: number; responseSeconds: number } | number>; score: number }[];
+  teams: { id: string; name: string; lastSeen: number; answers: Record<string, ApiTeamAnswer | number>; score: number }[];
   currentQuestion: {
     question: string;
     choices: string[];
     correctIndex?: number;
     note?: string;
   } | null;
+}
+
+interface FullQuestion {
+  question: string;
+  choices: [string, string, string, string];
+  correctIndex: number;
+  note?: string;
 }
 
 const LETTERS = ["A", "B", "C", "D"];
@@ -39,6 +48,8 @@ export default function ControlPage() {
   const [code, setCode] = useState("");
   const [authError, setAuthError] = useState("");
   const [state, setState] = useState<ApiState | null>(null);
+  const [manualTeamId, setManualTeamId] = useState<string | null>(null);
+  const [allQuestions, setAllQuestions] = useState<FullQuestion[] | null>(null);
 
   const poll = useCallback(async () => {
     if (!authed) return;
@@ -53,6 +64,14 @@ export default function ControlPage() {
     const id = setInterval(poll, 1500);
     return () => clearInterval(id);
   }, [poll]);
+
+  useEffect(() => {
+    if (!authed || state?.phase !== "scores" || allQuestions) return;
+    fetch("/api/questions")
+      .then((r) => r.json())
+      .then((q: FullQuestion[]) => setAllQuestions(Array.isArray(q) ? q : null))
+      .catch(() => {});
+  }, [authed, state?.phase, allQuestions]);
 
   async function handleAuth() {
     const res = await post("auth-control", { code });
@@ -151,7 +170,7 @@ export default function ControlPage() {
         </p>
         {phase === "question" && (
           <p style={{ color: "#555", fontSize: 11, marginBottom: 10 }}>
-            Si une équipe n'apparaît pas comme ayant répondu, cliquez sur la lettre correspondante pour enregistrer sa réponse manuellement.
+            Si une équipe n'apparaît pas comme ayant répondu, cliquez sur « Ajouter » pour enregistrer sa réponse manuellement.
           </p>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -190,25 +209,15 @@ export default function ControlPage() {
                     {phase !== "question" && (isCorrect ? " ✓" : " ✗")}
                   </span>
                 ) : phase === "question" ? (
-                  <div style={{ display: "flex", gap: 4 }}>
-                    {LETTERS.map((letter, i) => (
-                      <button
-                        key={i}
-                        onClick={async () => {
-                          const r = await post("host-set-answer", { teamId: t.id, choiceIndex: i });
-                          if (!r.ok) alert(r.error);
-                        }}
-                        title={`Enregistrer manuellement la réponse ${letter} pour ${t.name}`}
-                        style={{
-                          width: 24, height: 24, borderRadius: 5, border: "1px solid #444",
-                          background: CHOICE_COLORS[i] + "33", color: "#ccc",
-                          fontSize: 11, fontWeight: 700, cursor: "pointer", padding: 0,
-                        }}
-                      >
-                        {letter}
-                      </button>
-                    ))}
-                  </div>
+                  <button
+                    onClick={() => setManualTeamId(t.id)}
+                    style={{
+                      padding: "3px 10px", borderRadius: 6, fontSize: 12, fontWeight: 600,
+                      background: "#1e1e2e", color: "#888", border: "1px solid #333", cursor: "pointer",
+                    }}
+                  >
+                    + Ajouter
+                  </button>
                 ) : (
                   <span style={{ color: "#555", fontSize: 13, fontStyle: "italic" }}>—</span>
                 )}
@@ -223,6 +232,11 @@ export default function ControlPage() {
           })}
         </div>
       </div>
+
+      {/* Récapitulatif de fin */}
+      {phase === "scores" && (
+        <ScoresRecap teams={teams} questions={allQuestions} timerEnabled={timerEnabled} />
+      )}
 
       {/* Actions */}
       <div style={styles.actions}>
@@ -250,6 +264,155 @@ export default function ControlPage() {
           />
         </div>
       )}
+
+      {/* Popup réponse manuelle */}
+      {manualTeamId && currentQuestion && (
+        <ManualAnswerModal
+          teamName={teams.find((t) => t.id === manualTeamId)?.name ?? ""}
+          question={currentQuestion}
+          onPick={async (choiceIndex) => {
+            const r = await post("host-set-answer", { teamId: manualTeamId, choiceIndex });
+            if (!r.ok) alert(r.error);
+            setManualTeamId(null);
+          }}
+          onClose={() => setManualTeamId(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ManualAnswerModal({
+  teamName, question, onPick, onClose,
+}: {
+  teamName: string;
+  question: { question: string; choices: string[] };
+  onPick: (choiceIndex: number) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
+        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 20,
+      }}
+    >
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#1a1a2e", borderRadius: 12, padding: 20, maxWidth: 420, width: "100%" }}>
+        <p style={{ color: "#f5c518", fontWeight: 700, marginBottom: 4 }}>{teamName}</p>
+        <p style={{ color: "#ddd", fontSize: 14, marginBottom: 16 }}>{question.question}</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {question.choices.map((c, i) => (
+            <button
+              key={i}
+              onClick={() => onPick(i)}
+              style={{
+                display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 8,
+                border: "none", background: CHOICE_COLORS[i] + "33", color: "#fff", fontSize: 14,
+                cursor: "pointer", textAlign: "left",
+              }}
+            >
+              <span style={{ background: CHOICE_COLORS[i], borderRadius: 6, padding: "2px 8px", fontWeight: 700, fontSize: 13, minWidth: 24, textAlign: "center" }}>
+                {LETTERS[i]}
+              </span>
+              {c}
+            </button>
+          ))}
+        </div>
+        <button onClick={onClose} style={{ marginTop: 14, width: "100%", padding: 10, borderRadius: 8, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer" }}>
+          Annuler
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ScoresRecap({
+  teams, questions, timerEnabled,
+}: {
+  teams: ApiState["teams"];
+  questions: FullQuestion[] | null;
+  timerEnabled: boolean;
+}) {
+  if (!questions) {
+    return (
+      <div style={{ ...styles.section, textAlign: "center", color: "#888", fontSize: 13 }}>
+        Chargement du récapitulatif…
+      </div>
+    );
+  }
+
+  const ranked = [...teams].sort((a, b) => b.score - a.score);
+  const teamCorrectCount = (t: ApiState["teams"][number]) =>
+    questions.reduce((acc, q, qi) => {
+      const raw = t.answers[String(qi)];
+      if (raw === undefined) return acc;
+      const idx = typeof raw === "number" ? raw : raw.choiceIndex;
+      return acc + (idx === q.correctIndex ? 1 : 0);
+    }, 0);
+
+  const questionStats = questions.map((q, qi) => {
+    let correct = 0;
+    let answered = 0;
+    let timeSum = 0;
+    let timeCount = 0;
+    for (const t of teams) {
+      const raw = t.answers[String(qi)];
+      if (raw === undefined) continue;
+      answered++;
+      const answer = normalizeAnswer(raw);
+      if (answer.choiceIndex === q.correctIndex) {
+        correct++;
+        if (timerEnabled && answer.responseSeconds > 0) { timeSum += answer.responseSeconds; timeCount++; }
+      }
+    }
+    return { question: q.question, correct, answered, avgTime: timeCount > 0 ? timeSum / timeCount : null };
+  });
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={styles.section}>
+        <p style={{ color: "#aaa", fontSize: 12, marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>
+          Classement détaillé
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {ranked.map((t, i) => (
+            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", borderRadius: 8, background: "#12121f" }}>
+              <span style={{ color: "#666", fontSize: 12, minWidth: 20 }}>#{i + 1}</span>
+              <span style={{ color: "#fff", flex: 1, fontSize: 14 }}>{t.name}</span>
+              <span style={{ color: "#888", fontSize: 12 }}>{teamCorrectCount(t)}/{questions.length} correctes</span>
+              <span style={{ color: "#f5c518", fontWeight: 700, fontSize: 14, minWidth: 60, textAlign: "right" }}>{t.score} pt{t.score > 1 ? "s" : ""}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={styles.section}>
+        <p style={{ color: "#aaa", fontSize: 12, marginBottom: 10, textTransform: "uppercase", letterSpacing: 1 }}>
+          Question par question
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {questionStats.map((qs, i) => {
+            const pct = teams.length > 0 ? Math.round((qs.correct / teams.length) * 100) : 0;
+            return (
+              <div key={i} style={{ padding: "8px 10px", borderRadius: 8, background: "#12121f" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                  <span style={{ color: "#ddd", fontSize: 13, flex: 1 }}>{i + 1}. {qs.question}</span>
+                  <span style={{
+                    color: pct >= 70 ? "#69f0ae" : pct >= 40 ? "#f5c518" : "#ff8a80",
+                    fontWeight: 700, fontSize: 13, whiteSpace: "nowrap",
+                  }}>
+                    {qs.correct}/{teams.length} ({pct}%)
+                  </span>
+                </div>
+                {qs.avgTime !== null && (
+                  <p style={{ color: "#666", fontSize: 11, marginTop: 4 }}>Temps moyen des bonnes réponses : {qs.avgTime.toFixed(1)}s</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
