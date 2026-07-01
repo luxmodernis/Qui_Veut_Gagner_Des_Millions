@@ -16,6 +16,7 @@ export interface Team {
   name: string;
   answers: Record<string, TeamAnswer>; // questionIndex -> answer
   lastSeen: number;
+  isBot?: boolean;
 }
 
 export interface QuizState {

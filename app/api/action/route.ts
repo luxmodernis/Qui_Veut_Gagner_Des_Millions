@@ -105,6 +105,7 @@ export async function POST(req: NextRequest) {
   const adminActions = [
     "admin-goto", "admin-reset-team", "admin-reset-all",
     "admin-set-phase", "admin-save-questions", "admin-save-settings",
+    "admin-add-bot",
   ];
   if (adminActions.includes(action)) {
     if (!authorized(req, getCodeB())) return err("unauthorized", 401);
@@ -135,6 +136,15 @@ export async function POST(req: NextRequest) {
       const { questions } = body as { questions: Question[] };
       await setQuestions(questions);
       return NextResponse.json({ ok: true });
+    } else if (action === "admin-add-bot") {
+      const botCount = Object.values(state.teams).filter((t) => t.isBot).length;
+      const botId = `bot_${Date.now()}_${botCount}`;
+      state.teams[botId] = {
+        name: `🤖 Robot ${botCount + 1}`,
+        answers: {},
+        lastSeen: Date.now(),
+        isBot: true,
+      };
     } else if (action === "admin-save-settings") {
       const { timerEnabled, timerDuration } = body as {
         timerEnabled: boolean;

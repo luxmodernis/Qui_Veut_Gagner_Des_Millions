@@ -26,12 +26,16 @@ const COLORS = ["#1565c0", "#6a1b9a", "#2e7d32", "#e65100"];
 
 export default function TvPage() {
   const [state, setState] = useState<ApiState | null>(null);
+  const [timerVisible, setTimerVisible] = useState(true);
 
   const poll = useCallback(async () => {
     try {
       const res = await fetch("/api/state");
       const data: ApiState = await res.json();
-      setState(data);
+      setState((prev) => {
+        if (prev?.questionIndex !== data.questionIndex) setTimerVisible(true);
+        return data;
+      });
     } catch {}
   }, []);
 
@@ -120,13 +124,18 @@ export default function TvPage() {
   if (phase === "question") {
     return (
       <div style={styles.root}>
-        <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 8, gap: 12 }}>
+          {timerEnabled && timerStartedAt && timerVisible && (
+            <Timer
+              timerStartedAt={timerStartedAt}
+              timerDuration={timerDuration}
+              size="lg"
+              onExpire={() => setTimerVisible(false)}
+            />
+          )}
           <div style={styles.questionBadge}>
             Question {questionIndex + 1} / {totalQuestions}
           </div>
-          {timerEnabled && timerStartedAt && (
-            <Timer timerStartedAt={timerStartedAt} timerDuration={timerDuration} size="lg" />
-          )}
         </div>
         <h2 style={styles.questionText}>{currentQuestion.question}</h2>
         <div style={styles.choicesGrid}>

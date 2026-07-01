@@ -24,6 +24,7 @@ export async function GET() {
     id,
     name: t.name,
     lastSeen: t.lastSeen,
+    isBot: t.isBot ?? false,
     answers: t.answers,
     score: calcTeamScore(t.answers, questions, state),
   }));
