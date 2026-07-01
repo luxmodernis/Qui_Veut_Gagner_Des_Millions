@@ -210,8 +210,21 @@ export default function ControlPage() {
           <Btn onClick={() => post("host-next")} color="#42a5f5"
             label={questionIndex + 1 >= totalQuestions ? "Voir les scores" : "Question suivante →"} />
         )}
-        {phase === "question" && <Btn onClick={() => post("host-scores")} color="#ef9a9a" label="Forcer les scores" />}
       </div>
+
+      {/* Arrêt anticipé */}
+      {phase === "question" && (
+        <div style={{ ...styles.actions, marginTop: 10, background: "#241414", border: "1px solid #4a2a2a" }}>
+          <Btn
+            onClick={() => {
+              if (confirm("Arrêter le quiz maintenant et afficher le classement final ? Les questions restantes ne seront pas posées."))
+                post("host-scores");
+            }}
+            color="#e57373"
+            label="⏹ Arrêter le quiz et afficher le classement"
+          />
+        </div>
+      )}
     </div>
   );
 }
