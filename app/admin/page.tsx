@@ -43,6 +43,27 @@ function emptyQuestion(): Question {
   return { question: "", choices: ["", "", "", ""], correctIndex: 0, note: "" };
 }
 
+const TEST_QUESTIONS: Question[] = [
+  {
+    question: "Quelle est la capitale de l'Australie ?",
+    choices: ["Sydney", "Melbourne", "Canberra", "Brisbane"],
+    correctIndex: 2,
+    note: "Beaucoup pensent que c'est Sydney, mais Canberra est la capitale fédérale depuis 1913, choisie comme compromis entre Sydney et Melbourne.",
+  },
+  {
+    question: "Combien d'os compte le corps humain adulte ?",
+    choices: ["106", "206", "306", "406"],
+    correctIndex: 1,
+    note: "Un adulte possède 206 os. À la naissance on en a environ 270, mais beaucoup fusionnent avec la croissance.",
+  },
+  {
+    question: "En quelle année l'homme a-t-il marché sur la Lune pour la première fois ?",
+    choices: ["1965", "1967", "1969", "1972"],
+    correctIndex: 2,
+    note: "Neil Armstrong et Buzz Aldrin ont posé le pied sur la Lune le 20 juillet 1969, lors de la mission Apollo 11.",
+  },
+];
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [code, setCode] = useState("");
@@ -338,6 +359,15 @@ export default function AdminPage() {
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <button onClick={addQuestion} style={{ ...styles.btn, background: "#2a2a3e", color: "#fff" }}>
             + Ajouter une question
+          </button>
+          <button
+            onClick={() => {
+              if (questions.length > 0 && !confirm("Remplacer les questions actuelles par 3 questions de test ?")) return;
+              setQuestions(TEST_QUESTIONS);
+            }}
+            style={{ ...styles.btn, background: "#37474f", color: "#90a4ae" }}
+          >
+            Charger questions de test
           </button>
           <button onClick={handleSave} style={{ ...styles.btn, background: "#4caf50", color: "#000" }}>
             Enregistrer les questions
