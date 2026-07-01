@@ -55,6 +55,7 @@ export default function AdminPage() {
   const [timerEnabled, setTimerEnabled] = useState(false);
   const [timerDuration, setTimerDuration] = useState(30);
   const [timerSaved, setTimerSaved] = useState(false);
+  const [timerDurationInput, setTimerDurationInput] = useState("30");
   const timerInitRef = useRef(false);
 
   const poll = useCallback(async () => {
@@ -66,7 +67,9 @@ export default function AdminPage() {
       if (!timerInitRef.current) {
         timerInitRef.current = true;
         setTimerEnabled(data.timerEnabled ?? false);
-        setTimerDuration(data.timerDuration ?? 30);
+        const dur = data.timerDuration ?? 30;
+        setTimerDuration(dur);
+        setTimerDurationInput(String(dur));
       }
     } catch {}
   }, [authed]);
@@ -248,10 +251,16 @@ export default function AdminPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ color: "#aaa", fontSize: 14 }}>Durée :</span>
               <input
-                type="number" min={5} max={300} step={5}
-                value={timerDuration}
-                onChange={(e) => setTimerDuration(Math.max(5, parseInt(e.target.value) || 30))}
-                style={{ ...styles.textInput, width: 80, textAlign: "center" }}
+                type="number" min={5} max={300}
+                value={timerDurationInput}
+                onChange={(e) => setTimerDurationInput(e.target.value)}
+                onBlur={() => {
+                  const parsed = parseInt(timerDurationInput);
+                  const clamped = isNaN(parsed) ? 30 : Math.min(300, Math.max(5, parsed));
+                  setTimerDuration(clamped);
+                  setTimerDurationInput(String(clamped));
+                }}
+                style={{ ...styles.textInput, width: 64, textAlign: "center", flexShrink: 0 }}
               />
               <span style={{ color: "#aaa", fontSize: 14 }}>secondes</span>
             </div>
