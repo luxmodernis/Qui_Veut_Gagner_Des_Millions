@@ -374,11 +374,20 @@ export default function AdminPage() {
 
       {/* Reset */}
       <Section title="Reset complet">
-        <button style={{ ...styles.btn, background: "#e53935", color: "#fff" }}
-          onClick={() => { if (confirm("Réinitialiser TOUT le quiz ? Les équipes devront se reconnecter.")) post("admin-reset-all"); }}>
-          Tout réinitialiser
-        </button>
-        <p style={{ color: "#666", fontSize: 12, marginTop: 8 }}>Remet le quiz en salle d'attente, efface toutes les équipes et réponses.</p>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button style={{ ...styles.btn, background: "#ffa726", color: "#000" }}
+            onClick={() => { if (confirm("Rejouer la partie ? Les équipes restent connectées mais leurs scores et réponses seront effacés.")) post("admin-replay"); }}>
+            🔄 Rejouer (garder les équipes)
+          </button>
+          <button style={{ ...styles.btn, background: "#e53935", color: "#fff" }}
+            onClick={() => { if (confirm("Réinitialiser TOUT le quiz ? Les équipes devront se reconnecter.")) post("admin-reset-all"); }}>
+            Tout réinitialiser
+          </button>
+        </div>
+        <p style={{ color: "#666", fontSize: 12, marginTop: 8 }}>
+          « Rejouer » remet le quiz en salle d'attente et efface les scores, mais garde les mêmes équipes connectées (utile entre deux sessions sur les mêmes iPads).<br />
+          « Tout réinitialiser » efface aussi les équipes — elles devront se reconnecter (nouveau device).
+        </p>
       </Section>
 
       {/* Timer */}

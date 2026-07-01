@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
 
   // ── Admin actions (code B) ────────────────────────────────────────────────
   const adminActions = [
-    "admin-goto", "admin-reset-team", "admin-reset-all",
+    "admin-goto", "admin-reset-team", "admin-reset-all", "admin-replay",
     "admin-set-phase", "admin-save-questions", "admin-save-settings",
     "admin-add-bot",
   ];
@@ -128,6 +128,14 @@ export async function POST(req: NextRequest) {
       state.questionIndex = 0;
       state.timerStartedAt = null;
       state.teams = {};
+    } else if (action === "admin-replay") {
+      // Repart au début avec les mêmes équipes, mais efface leurs réponses/scores
+      state.phase = "lobby";
+      state.questionIndex = 0;
+      state.timerStartedAt = null;
+      for (const team of Object.values(state.teams)) {
+        team.answers = {};
+      }
     } else if (action === "admin-set-phase") {
       const { phase } = body as { phase: Phase };
       if (phase === "question" && questions.length === 0) return err("Aucune question enregistrée");
