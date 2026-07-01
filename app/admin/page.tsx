@@ -112,6 +112,7 @@ export default function AdminPage() {
   const [genLoading, setGenLoading] = useState(false);
   const [genError, setGenError] = useState("");
   const [genPreview, setGenPreview] = useState<Question[]>([]);
+  const genHistoryRef = useRef<string[]>([]);
 
   // Bots — tracking des réponses déjà envoyées par cette session
   const [botsEnabled, setBotsEnabled] = useState(true);
@@ -221,10 +222,11 @@ export default function AdminPage() {
     setGenError("");
     setGenPreview([]);
     try {
+      const avoid = [...questions.map((q) => q.question), ...genHistoryRef.current].slice(-30);
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ count: genCount, topic: genTopic }),
+        body: JSON.stringify({ count: genCount, topic: genTopic, avoid }),
       });
       const data = await res.json();
       if (!res.ok) { setGenError(data.error ?? "Erreur"); return; }
@@ -246,6 +248,7 @@ export default function AdminPage() {
         })
         .filter((q: Question) => q.choices.every((c) => c.trim().length > 0));
       if (normalized.length === 0) { setGenError("Réponse de l'IA incomplète ou mal formée — réessaie"); return; }
+      genHistoryRef.current.push(...normalized.map((q) => q.question));
       setGenPreview(normalized);
     } catch {
       setGenError("Erreur réseau");
@@ -353,18 +356,11 @@ export default function AdminPage() {
       </Section>
 
       {/* Robots */}
-      <Section title={`Robots de test (${botTeams.length})`}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <div
-            onClick={() => setBotsEnabled((v) => !v)}
-            style={{ width: 48, height: 26, borderRadius: 13, cursor: "pointer", transition: "background 0.2s", flexShrink: 0, background: botsEnabled ? "#4caf50" : "#333", position: "relative" }}
-          >
-            <div style={{ position: "absolute", top: 3, left: botsEnabled ? 25 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
-          </div>
-          <span style={{ color: botsEnabled ? "#4caf50" : "#888", fontWeight: 600, fontSize: 14 }}>
-            {botsEnabled ? "Robots actifs" : "Robots en pause"}
-          </span>
-        </div>
+      <ToggleSection
+        title={`Robots de test (${botTeams.length})`}
+        enabled={botsEnabled}
+        onToggle={() => setBotsEnabled((v) => !v)}
+      >
         <p style={{ color: "#666", fontSize: 12, marginBottom: 10 }}>
           Les robots répondent automatiquement 3–9 s après le début de chaque question (avec ou sans chrono). Ils apparaissent sur l'écran animateur et dans les scores.
           Cette réponse automatique nécessite que cet onglet admin reste ouvert.
@@ -392,7 +388,7 @@ export default function AdminPage() {
         >
           + Ajouter un robot
         </button>
-      </Section>
+      </ToggleSection>
 
       {/* Navigation */}
       <Section title="Navigation manuelle">
@@ -434,36 +430,34 @@ export default function AdminPage() {
       </Section>
 
       {/* Timer */}
-      <Section title="Chronomètre">
+      <ToggleSection
+        title="Chronomètre"
+        enabled={timerEnabled}
+        onToggle={async () => {
+          const next = !timerEnabled;
+          setTimerEnabled(next);
+          await post("admin-save-settings", { timerEnabled: next, timerDuration });
+          setTimerSaved(true);
+          setTimeout(() => setTimerSaved(false), 3000);
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-          <div
-            onClick={() => setTimerEnabled((v) => !v)}
-            style={{ width: 48, height: 26, borderRadius: 13, cursor: "pointer", transition: "background 0.2s", flexShrink: 0, background: timerEnabled ? "#4caf50" : "#333", position: "relative" }}
-          >
-            <div style={{ position: "absolute", top: 3, left: timerEnabled ? 25 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ color: "#aaa", fontSize: 14 }}>Durée :</span>
+            <input
+              type="number" min={5} max={300}
+              value={timerDurationInput}
+              onChange={(e) => setTimerDurationInput(e.target.value)}
+              onBlur={() => {
+                const parsed = parseInt(timerDurationInput);
+                const clamped = isNaN(parsed) ? 30 : Math.min(300, Math.max(5, parsed));
+                setTimerDuration(clamped);
+                setTimerDurationInput(String(clamped));
+              }}
+              style={{ ...styles.textInput, width: 64, textAlign: "center", flexShrink: 0 }}
+            />
+            <span style={{ color: "#aaa", fontSize: 14 }}>secondes</span>
           </div>
-          <span style={{ color: timerEnabled ? "#4caf50" : "#888", fontWeight: 600, fontSize: 14 }}>
-            {timerEnabled ? "Activé" : "Désactivé"}
-          </span>
-
-          {timerEnabled && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ color: "#aaa", fontSize: 14 }}>Durée :</span>
-              <input
-                type="number" min={5} max={300}
-                value={timerDurationInput}
-                onChange={(e) => setTimerDurationInput(e.target.value)}
-                onBlur={() => {
-                  const parsed = parseInt(timerDurationInput);
-                  const clamped = isNaN(parsed) ? 30 : Math.min(300, Math.max(5, parsed));
-                  setTimerDuration(clamped);
-                  setTimerDurationInput(String(clamped));
-                }}
-                style={{ ...styles.textInput, width: 64, textAlign: "center", flexShrink: 0 }}
-              />
-              <span style={{ color: "#aaa", fontSize: 14 }}>secondes</span>
-            </div>
-          )}
 
           <button
             onClick={async () => {
@@ -478,11 +472,9 @@ export default function AdminPage() {
           {timerSaved && <span style={{ color: "#4caf50", fontSize: 14 }}>✓ Sauvegardé</span>}
         </div>
         <p style={{ color: "#555", fontSize: 12, marginTop: 10 }}>
-          {timerEnabled
-            ? `Les équipes auront ${timerDuration}s pour répondre. Score dégressif : 10 pts si réponse instantanée, ~15% de moins par seconde d'attente, minimum 1 pt si correct.`
-            : "Sans chronomètre : 1 point par bonne réponse."}
+          Les équipes auront {timerDuration}s pour répondre. Score dégressif : 10 pts si réponse instantanée, ~15% de moins par seconde d'attente, minimum 1 pt si correct.
         </p>
-      </Section>
+      </ToggleSection>
 
       {/* Générateur IA */}
       <Section title="Générateur de questions IA">
@@ -646,6 +638,25 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div style={{ background: "#1a1a2e", borderRadius: 10, padding: 16, marginBottom: 14 }}>
       <p style={{ color: "#aaa", fontSize: 12, marginBottom: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>{title}</p>
       {children}
+    </div>
+  );
+}
+
+function ToggleSection({
+  title, enabled, onToggle, children,
+}: { title: string; enabled: boolean; onToggle: () => void; children: React.ReactNode }) {
+  return (
+    <div style={{ background: "#1a1a2e", borderRadius: 10, padding: 16, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <p style={{ color: "#aaa", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, margin: 0 }}>{title}</p>
+        <div
+          onClick={onToggle}
+          style={{ width: 48, height: 26, borderRadius: 13, cursor: "pointer", transition: "background 0.2s", flexShrink: 0, background: enabled ? "#4caf50" : "#333", position: "relative" }}
+        >
+          <div style={{ position: "absolute", top: 3, left: enabled ? 25 : 3, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+        </div>
+      </div>
+      {enabled && <div style={{ marginTop: 14 }}>{children}</div>}
     </div>
   );
 }

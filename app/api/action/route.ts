@@ -15,6 +15,14 @@ function authorized(req: NextRequest, code: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  try {
+    return await handlePost(req);
+  } catch (e) {
+    return err(`Erreur serveur : ${e instanceof Error ? e.message : String(e)}`, 500);
+  }
+}
+
+async function handlePost(req: NextRequest) {
   const body = await req.json();
   const { action } = body as { action: string };
 
@@ -146,9 +154,27 @@ export async function POST(req: NextRequest) {
         state.timerStartedAt = null;
       }
     } else if (action === "admin-save-questions") {
-      const { questions } = body as { questions: Question[] };
-      await setQuestions(questions);
-      return NextResponse.json({ ok: true });
+      const { questions: incoming } = body as { questions: Question[] };
+      if (!Array.isArray(incoming)) return err("Format de questions invalide (pas un tableau)");
+      for (let i = 0; i < incoming.length; i++) {
+        const q = incoming[i];
+        if (!q || typeof q.question !== "string" || !q.question.trim()) {
+          return err(`Question ${i + 1} : texte manquant ou invalide`);
+        }
+        if (!Array.isArray(q.choices) || q.choices.length !== 4 || q.choices.some((c) => typeof c !== "string" || !c.trim())) {
+          return err(`Question ${i + 1} : il faut exactement 4 propositions non vides`);
+        }
+        if (typeof q.correctIndex !== "number" || q.correctIndex < 0 || q.correctIndex > 3) {
+          return err(`Question ${i + 1} : index de bonne réponse invalide`);
+        }
+      }
+      await setQuestions(incoming);
+      // vérifie que l'écriture a bien été prise en compte avant de répondre
+      const confirmed = await getQuestions();
+      if (confirmed.length !== incoming.length) {
+        return err("La sauvegarde n'a pas été confirmée par la base de données — réessayez", 500);
+      }
+      return NextResponse.json({ ok: true, count: confirmed.length });
     } else if (action === "admin-add-bot") {
       const botCount = Object.values(state.teams).filter((t) => t.isBot).length;
       const botId = `bot_${Date.now()}_${botCount}`;

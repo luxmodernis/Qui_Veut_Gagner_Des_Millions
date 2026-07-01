@@ -14,14 +14,26 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return err("GROQ_API_KEY manquant dans les variables d'environnement", 500);
 
-  const { count = 3, topic = "" } = await req.json() as { count?: number; topic?: string };
+  const { count = 3, topic = "", avoid = [] } = await req.json() as { count?: number; topic?: string; avoid?: string[] };
   const n = Math.min(10, Math.max(1, count));
 
   const topicLine = topic.trim()
     ? `Thème imposé : ${topic.trim()}.`
-    : "Thème libre : culture générale variée (géographie, sciences, histoire, art, sport…).";
+    : "Thème libre : culture générale variée (géographie, sciences, histoire, art, sport, cinéma, musique, cuisine, nature, technologie…).";
 
-  const prompt = `Génère ${n} questions de quiz en français. ${topicLine}
+  const avoidLine = avoid.length > 0
+    ? `\nN'utilise PAS ces questions déjà posées récemment, ni de reformulation proche : ${avoid.map((q) => `"${q}"`).join(", ")}.`
+    : "";
+
+  // graine aléatoire pour forcer la diversité entre deux appels identiques
+  const seed = Math.floor(Math.random() * 1000000);
+  const categories = ["géographie", "histoire", "sciences", "cinéma", "musique", "sport", "cuisine", "art", "nature", "technologie", "littérature", "espace"];
+  const shuffled = [...categories].sort(() => Math.random() - 0.5).slice(0, 4);
+
+  const prompt = `Génère ${n} questions de quiz en français, originales et variées, en t'inspirant si possible de ces catégories : ${shuffled.join(", ")}.
+Évite les questions trop classiques ou clichés (capitale de l'Australie, nombre d'os du corps humain, année d'Apollo 11, etc.) — cherche des faits surprenants mais vérifiables.
+${topicLine}${avoidLine}
+Identifiant de génération (ignore, sert juste à varier) : ${seed}.
 Réponds UNIQUEMENT avec un objet JSON valide, sans markdown, sans commentaires, sans texte avant ou après.
 Format exact (respecte les virgules, les guillemets, les index) :
 {"questions":[{"question":"...","choices":["option A","option B","option C","option D"],"correctIndex":2,"note":"explication courte de la bonne réponse"}]}
@@ -36,7 +48,7 @@ Règles : correctIndex est l'index 0-3 de la bonne réponse dans choices. Les ma
     body: JSON.stringify({
       model: "llama-3.3-70b-versatile",
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.8,
+      temperature: 1.1,
       response_format: { type: "json_object" },
     }),
   });
